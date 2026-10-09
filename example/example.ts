@@ -3,7 +3,8 @@
  * Demonstrates the main capabilities of the library.
  */
 
-import { WebMaxClient } from '../src/index';
+import { WebMaxClient, FileSessionStorage } from '../src/index';
+import * as path from 'path'
 
 const qrcode = require('qrcode-terminal');
 
@@ -11,7 +12,11 @@ async function main(): Promise<void> {
   // Initialize the client
   const client = new WebMaxClient({
     name: 'example_session', // Session name
-    appVersion: '26.19.2'
+    appVersion: '26.19.2',
+    sessionStorage: new FileSessionStorage({
+      name: "default",
+      directory: path.resolve(process.cwd(), 'sessions_test')
+    })
   });
 
   // QR handler — the library does not print QR codes itself; render the link here.

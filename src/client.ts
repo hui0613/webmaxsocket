@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import { SessionManager } from './session';
+import { SessionManager, SessionStorage } from './session';
 import { MaxSocketTransport } from './socketTransport';
 import { Message, ChatAction, User } from './entities';
 import { EventTypes, ChatActions, APP_VERSION, BUILD_NUMBER } from './constants';
@@ -70,6 +70,8 @@ export interface WebMaxClientOptions {
   name?: string;
   /** Alias for `name`. */
   session?: string;
+  /** Custom session storage backend (defaults to file storage under sessions/). */
+  sessionStorage?: SessionStorage;
   /** WebSocket API URL. */
   apiUrl?: string;
   /** OK API endpoint used by hangupCall / rejectIncomingCall. */
@@ -244,7 +246,7 @@ class WebMaxClient extends EventEmitter {
     this.origin = options.origin || 'https://web.max.ru';
     /** Extra header for ws (e.g. Referer for QR from max.ru, while Origin stays web.max.ru — otherwise 403). */
     this._wsReferer = options.referer || options.wsReferer || null;
-    this.session = new SessionManager(this.sessionName);
+    this.session = new SessionManager({ name: this.sessionName, storage: options.sessionStorage });
 
     const deviceTypeMap: any = { 1: 'WEB', 2: 'ANDROID', 3: 'ANDROID' };
     const rawDeviceType = options.deviceType ?? configObj.device_type ?? configObj.deviceType ?? this.session.get('deviceType');
@@ -447,8 +449,6 @@ class WebMaxClient extends EventEmitter {
       node: process.version,
       cwd: process.cwd(),
       sessionName: this.sessionName,
-      sessionPath: this.session.sessionFile,
-      backupPath: path.join(this.session.sessionDir, `${this.sessionName}.last_ok.json`),
       tokenPreview,
       deviceId: this.deviceId,
       userAgent: this.userAgent.toJSON(),

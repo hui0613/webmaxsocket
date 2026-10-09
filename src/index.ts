@@ -7,6 +7,7 @@
 
 import { WebMaxClient } from './client';
 import { MaxSocketTransport } from './socketTransport';
+import { SessionManager, SessionStorage, FileSessionStorage } from './session';
 import { User, Message, ChatAction } from './entities';
 import { ChatActions, EventTypes, MessageTypes, APP_VERSION, BUILD_NUMBER } from './constants';
 import { Opcode, getOpcodeName } from './opcodes';
@@ -25,6 +26,9 @@ import {
 export {
   WebMaxClient,
   MaxSocketTransport,
+  SessionManager,
+  SessionStorage,
+  FileSessionStorage,
   User,
   Message,
   ChatAction,
