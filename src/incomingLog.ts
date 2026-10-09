@@ -2,6 +2,11 @@
  * Incoming event logging mode for WebMaxClient.
  */
 
+export interface IncomingLogOptions {
+  logIncoming?: false | 'messages' | 'verbose';
+  logIncomingVerbose?: boolean;
+}
+
 /**
  * @param options WebMaxClient constructor options (`logIncoming`, `logIncomingVerbose`, ...)
  * @returns `{ mode: 'off' | 'messages' | 'verbose' }`
@@ -13,7 +18,7 @@
  * - `WEBMAX_DEBUG=1` — verbose mode, unless `logIncoming: 'messages'` is set explicitly.
  */
 export function resolveIncomingLogMode(
-  options: any = {}
+  options: IncomingLogOptions = {}
 ): { mode: 'off' | 'messages' | 'verbose' } {
   const silent = process.env.WEBMAX_SILENT === '1';
   const envVerbose = process.env.WEBMAX_DEBUG === '1';

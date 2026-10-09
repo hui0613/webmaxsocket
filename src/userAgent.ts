@@ -43,25 +43,55 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+export interface UserAgentOptions {
+  deviceType?: string;
+  locale?: string;
+  deviceLocale?: string;
+  osVersion?: string;
+  deviceName?: string;
+  headerUserAgent?: string;
+  appVersion?: string;
+  screen?: string;
+  timezone?: string;
+  clientSessionId?: number;
+  buildNumber?: number;
+  release?: string;
+}
+
+export interface UserAgentJSON {
+  deviceType: string;
+  locale: string;
+  deviceLocale: string;
+  osVersion: string;
+  deviceName: string;
+  headerUserAgent: string;
+  appVersion: string;
+  screen: string;
+  timezone: string;
+  clientSessionId: number;
+  buildNumber: number;
+  release?: string;
+}
+
 /**
  * Creates a UserAgent payload for the Max API.
  * Supports WEB, ANDROID and custom profiles (for token auth).
  */
 export class UserAgentPayload {
-  deviceType: any;
-  locale: any;
-  deviceLocale: any;
-  osVersion: any;
-  deviceName: any;
-  headerUserAgent: any;
-  appVersion: any;
-  screen: any;
-  timezone: any;
-  clientSessionId: any;
-  buildNumber: any;
-  release: any;
+  deviceType: string;
+  locale: string;
+  deviceLocale: string;
+  osVersion: string;
+  deviceName: string;
+  headerUserAgent: string;
+  appVersion: string;
+  screen: string;
+  timezone: string;
+  clientSessionId: number;
+  buildNumber: number;
+  release: string | undefined;
 
-  constructor(options: any = {}) {
+  constructor(options: UserAgentOptions = {}) {
     this.deviceType = options.deviceType || 'WEB';
     this.locale = options.locale || 'ru';
     this.deviceLocale = options.deviceLocale || 'ru';
@@ -79,8 +109,8 @@ export class UserAgentPayload {
   /**
    * Converts to a sendable object (camelCase keys).
    */
-  toJSON(): any {
-    const obj: any = {
+  toJSON(): UserAgentJSON {
+    const obj: UserAgentJSON = {
       deviceType: this.deviceType,
       locale: this.locale,
       deviceLocale: this.deviceLocale,

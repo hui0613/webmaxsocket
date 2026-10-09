@@ -36,6 +36,19 @@ const lz4Uncompress = resolveLz4Uncompress();
 const HOST = 'api.oneme.ru';
 const PORT = 443;
 
+export interface SocketPacket {
+  ver: number;
+  cmd: number;
+  seq: number;
+  opcode: number;
+  payload: any;
+}
+
+interface PendingRequest {
+  resolve: (data: any) => void;
+  reject: (err: any) => void;
+}
+
 /**
  * Builds a binary packet.
  * Header: 1b ver, 2b cmd, 1b seq, 2b opcode, 4b payload_len.
@@ -81,7 +94,7 @@ export function packPacket(
 /**
  * Parses a response. compFlag: raw LZ4 block.
  */
-export function unpackPacket(data: Buffer): any {
+export function unpackPacket(data: Buffer): SocketPacket | null {
   if (data.length < 10) return null;
   const ver = data.readUInt8(0);
   const cmd = data.readUInt16BE(1);
@@ -127,8 +140,8 @@ function safeJsonForLog(obj: any, maxLen: number = 12000): string {
   }
 }
 
-function readExactlyFromBuffer(transport: any, n: number): Promise<any> {
-  return new Promise<any>((resolve) => {
+function readExactlyFromBuffer(transport: any, n: number): Promise<Buffer> {
+  return new Promise<Buffer>((resolve) => {
     const tryResolve = (): boolean => {
       if (transport._recvBuffer.length >= n) {
         const result = transport._recvBuffer.subarray(0, n);
@@ -154,12 +167,12 @@ export class MaxSocketTransport {
   deviceType: string;
   ua: string;
   debug: boolean;
-  socket: any;
+  socket: tls.TLSSocket | null;
   seq: number;
   ver: number;
-  pending: Map<any, any>;
+  pending: Map<number, PendingRequest>;
   _recvBuffer: Buffer;
-  onNotification: ((data: any) => void) | null;
+  onNotification: ((data: SocketPacket) => void) | null;
 
   constructor(options: any = {}) {
     this.host = options.host || HOST;
@@ -209,7 +222,7 @@ export class MaxSocketTransport {
     });
   }
 
-  _makeMessage(opcode: number, payload: any, cmd: number = 0): any {
+  _makeMessage(opcode: number, payload: any, cmd: number = 0): SocketPacket {
     this.seq++;
     return {
       ver: this.ver,
@@ -238,7 +251,7 @@ export class MaxSocketTransport {
         const header = await readExactlyFromBuffer(this, 10);
         const packedLen = header.readUInt32BE(6);
         const payloadLen = packedLen & 0xffffff;
-        let payloadData = Buffer.alloc(0);
+        let payloadData: Buffer = Buffer.alloc(0);
         if (payloadLen > 0) {
           payloadData = await readExactlyFromBuffer(this, payloadLen);
         }
@@ -270,7 +283,7 @@ export class MaxSocketTransport {
     readNext();
   }
 
-  async sendAndWait(opcode: number, payload: any, cmd: number = 0, timeout: number = 20000): Promise<any> {
+  async sendAndWait(opcode: number, payload: any, cmd: number = 0, timeout: number = 20000): Promise<SocketPacket> {
     if (!this.socket || this.socket.destroyed) throw new Error('Socket not connected');
 
     const outMsg = this._makeMessage(opcode, payload, cmd);
@@ -281,8 +294,8 @@ export class MaxSocketTransport {
       this._log('→', getOpcodeName(opcode), `(seq=${outMsg.seq})`, safeJsonForLog(payload));
     }
 
-    let pendingRef: any;
-    const promise = new Promise<any>((resolve, reject) => {
+    let pendingRef!: PendingRequest;
+    const promise = new Promise<SocketPacket>((resolve, reject) => {
       const t = setTimeout(() => {
         const p = this.pending.get(seqKey);
         if (p) {
@@ -333,7 +346,7 @@ export class MaxSocketTransport {
     return result;
   }
 
-  async handshake(userAgentPayload?: any): Promise<any> {
+  async handshake(userAgentPayload?: UserAgentPayload): Promise<SocketPacket> {
     const ua = userAgentPayload || new UserAgentPayload({
       deviceType: this.deviceType,
       headerUserAgent: this.ua,
@@ -352,7 +365,7 @@ export class MaxSocketTransport {
     return resp;
   }
 
-  async requestCode(phone: string, language: string = 'ru'): Promise<any> {
+  async requestCode(phone: string, language: string = 'ru'): Promise<string | null> {
     const payload = { phone, type: 'START_AUTH', language };
     const data = await this.sendAndWait(Opcode.AUTH_REQUEST, payload);
     return data.payload?.token || null;
@@ -397,7 +410,7 @@ export class MaxSocketTransport {
     return data.payload?.chats || [];
   }
 
-  async getHistory(chatId: any, from: number = Date.now(), backward: number = 200, forward: number = 0): Promise<any[]> {
+  async getHistory(chatId: string | number | bigint, from: number = Date.now(), backward: number = 200, forward: number = 0): Promise<any[]> {
     const data = await this.sendAndWait(Opcode.CHAT_HISTORY, {
       chatId,
       from,

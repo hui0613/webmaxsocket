@@ -1,15 +1,15 @@
-import { User } from './User';
+import { User, UserJSON } from './User';
 
 /**
  * Class representing a chat action.
  */
 export class ChatAction {
   client: any;
-  type: any;
-  chatId: any;
-  userId: any;
-  user: any;
-  timestamp: any;
+  type: string | null;
+  chatId: string | number | null;
+  userId: string | number | null;
+  user: User | null;
+  timestamp: number;
   rawData: any;
 
   constructor(data: any, client: any) {
@@ -32,7 +32,13 @@ export class ChatAction {
   /**
    * Returns a JSON representation.
    */
-  toJSON(): any {
+  toJSON(): {
+    type: string | null;
+    chatId: string | number | null;
+    userId: string | number | null;
+    user: UserJSON | null;
+    timestamp: number;
+  } {
     return {
       type: this.type,
       chatId: this.chatId,

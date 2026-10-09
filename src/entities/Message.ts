@@ -1,22 +1,41 @@
 import { User } from './User';
 import { downloadUrlToTempFile, extFromAttachType } from './downloadMedia';
 
+export interface ReplyOptions {
+  text?: string;
+  cid?: string | number;
+  attachments?: any[];
+  quote?: boolean;
+}
+
+export interface EditOptions {
+  text?: string;
+  [key: string]: any;
+}
+
+export interface DownloadAttachmentOptions {
+  dir?: string;
+  filename?: string;
+  extFallback?: string;
+  chatId?: string | number | bigint;
+}
+
 /**
  * Class representing a message.
  */
 export class Message {
   client: any;
-  id: any;
-  cid: any;
-  chatId: any;
-  text: any;
-  senderId: any;
-  sender: any;
-  timestamp: any;
-  type: any;
-  isEdited: any;
-  replyTo: any;
-  attachments: any;
+  id: string | number | bigint | null;
+  cid: string | number | null;
+  chatId: string | number | bigint | null;
+  text: string;
+  senderId: string | number | bigint | null;
+  sender: User | null;
+  timestamp: number;
+  type: string;
+  isEdited: boolean;
+  replyTo: string | number | null;
+  attachments: any[];
   rawData: any;
 
   constructor(data: any, client: any) {
@@ -71,7 +90,7 @@ export class Message {
   /**
    * Gets sender information.
    */
-  async fetchSender(): Promise<any> {
+  async fetchSender(): Promise<User | null> {
     if (!this.sender && this.senderId) {
       try {
         this.sender = await this.client.getUser(this.senderId);
@@ -97,7 +116,7 @@ export class Message {
    * By default without a quote (without link REPLY): the TCP server often rejects MSG_SEND with a link.
    * Quote/thread: reply({ text, quote: true }) — if the server returns an error, keep quote: false.
    */
-  async reply(options: any): Promise<any> {
+  async reply(options: ReplyOptions | string): Promise<any> {
     if (typeof options === 'string') {
       options = { text: options };
     }
@@ -118,7 +137,7 @@ export class Message {
   /**
    * Edits the message.
    */
-  async edit(options: any): Promise<any> {
+  async edit(options: EditOptions | string): Promise<any> {
     if (typeof options === 'string') {
       options = { text: options };
     }
@@ -149,7 +168,7 @@ export class Message {
    * @param options
    * @returns `{ path, contentType }`
    */
-  async downloadAttachment(index: number = 0, options: any = {}): Promise<{ path: string; contentType: string }> {
+  async downloadAttachment(index: number = 0, options: DownloadAttachmentOptions = {}): Promise<{ path: string; contentType: string }> {
     const att = this.attachments[index];
     if (!att) {
       throw new Error(`No attachment at index ${index}`);
@@ -190,7 +209,7 @@ export class Message {
   /**
    * Forwards the message.
    */
-  async forward(chatId: any): Promise<any> {
+  async forward(chatId: string | number | bigint): Promise<any> {
     return await this.client.forwardMessage({
       messageId: this.id,
       fromChatId: this.chatId,

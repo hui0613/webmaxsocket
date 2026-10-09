@@ -1,16 +1,28 @@
+export interface UserJSON {
+  id: string | number | null;
+  firstname: string;
+  lastname: string;
+  username: string | null;
+  phone: string | null;
+  avatar: string | null;
+  photoId: string | number | null;
+  status: string;
+  bio: string;
+}
+
 /**
  * Class representing a user.
  */
 export class User {
-  id: any;
-  firstname: any;
-  lastname: any;
-  username: any;
-  phone: any;
-  avatar: any;
-  photoId: any;
-  status: any;
-  bio: any;
+  id: string | number | null;
+  firstname: string;
+  lastname: string;
+  username: string | null;
+  phone: string | null;
+  avatar: string | null;
+  photoId: string | number | null;
+  status: string;
+  bio: string;
   rawData: any;
 
   constructor(data: any) {
@@ -43,7 +55,7 @@ export class User {
   /**
    * Returns a JSON representation.
    */
-  toJSON(): any {
+  toJSON(): UserJSON {
     return {
       id: this.id,
       firstname: this.firstname,

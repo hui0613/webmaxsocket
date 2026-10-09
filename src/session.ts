@@ -8,7 +8,7 @@ export class SessionManager {
   sessionName: string;
   sessionDir: string;
   sessionFile: string;
-  data: any;
+  data: Record<string, any>;
 
   constructor(sessionName: string = 'default') {
     this.sessionName = sessionName;
@@ -81,7 +81,7 @@ export class SessionManager {
   /**
    * Sets a value in the session.
    */
-  set(key: string, value: any): void {
+  set(key: string, value: unknown): void {
     this.data[key] = value;
     this.save();
   }
