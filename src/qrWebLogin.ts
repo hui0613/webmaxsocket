@@ -1,15 +1,12 @@
 /**
- * Извлекает идентификатор входа по QR: UUID trackId или opaque token (qr_…).
- * Поддерживаются:
- * - https://max.ru/qr/v1/auth?token=qr_…
- * - https://max.ru/login/qr/<uuid> или :auth/<uuid>
- * - web.max / trackId в query
- * - «голый» UUID или строка qr_…
- *
- * @param {string} qrUrlOrTrackId
- * @returns {string|null}
+ * Extracts the QR login identifier: a UUID trackId or an opaque token (qr_...).
+ * Supported forms:
+ * - https://max.ru/qr/v1/auth?token=qr_...
+ * - https://max.ru/login/qr/<uuid> or :auth/<uuid>
+ * - web.max / trackId in the query string
+ * - a bare UUID or a qr_... string
  */
-function parseQrTrackId(qrUrlOrTrackId) {
+export function parseQrTrackId(qrUrlOrTrackId: string | null | undefined): string | null {
   const s = String(qrUrlOrTrackId == null ? '' : qrUrlOrTrackId).trim();
   if (!s) return null;
 
@@ -41,7 +38,7 @@ function parseQrTrackId(qrUrlOrTrackId) {
           if (m) return m[0];
         }
       }
-      // https://max.ru/auth/<uuid> или max.ru/:auth/<uuid> (как в QR)
+      // https://max.ru/auth/<uuid> or max.ru/:auth/<uuid> (as in the QR).
       const pathSegs = u.pathname.split('/').filter(Boolean);
       for (const seg of pathSegs) {
         if (uuidRe.test(seg)) {
@@ -55,5 +52,3 @@ function parseQrTrackId(qrUrlOrTrackId) {
   const m = decoded.match(uuidRe);
   return m ? m[0] : null;
 }
-
-module.exports = { parseQrTrackId };

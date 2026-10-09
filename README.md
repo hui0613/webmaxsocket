@@ -1,98 +1,114 @@
 # WebMaxSocket - Node.js Client for Max Messenger
 
-## 📖 Описание / Description
+## Description
 
-**WebMaxSocket** — async Node.js библиотека для работы с внутренним API мессенджера Max. Поддерживает **QR-код авторизацию**, **Token авторизацию**, **SMS-вход** с опциональным **2FA-паролем** (как в приложении Max), и работу через **WebSocket** (WEB) или **TCP Socket** (ANDROID).
+**WebMaxSocket** — async Node.js library for working with the internal API of the Max messenger. Supports **QR code authorization**, **Token authorization**, **SMS login** with an optional **2FA password** (like the Max app), and operation over **WebSocket** (WEB) or **TCP Socket** (ANDROID).
 
-**Текущая версия пакета: 1.2.7**
+**Current package version: 1.2.7**
 
-Сводка всех методов: **[api.package.md](./api.package.md)**.
+Method summary: **[api.package.md](./api.package.md)**.
 
-### Журнал изменений (выдержка)
+## Changelog (excerpt)
 
-#### 1.2.7
+### 1.2.7
 
-- **Fingerprint 26.19.2 (6733):** актуальные `APP_VERSION` / `BUILD_NUMBER` (фикс «Приложение устарело» на SMS).
-- **`getUserByPhone` / `getUserIdByPhone`:** поиск пользователя по номеру (`CONTACT_INFO_BY_PHONE`).
+- **Fingerprint 26.19.2 (6733):** up-to-date `APP_VERSION` / `BUILD_NUMBER` (fixes "The app is outdated" on SMS).
+- **`getUserByPhone` / `getUserIdByPhone`:** user lookup by phone number (`CONTACT_INFO_BY_PHONE`).
 
-#### 1.2.6
+### 1.2.6
 
-- **`client.lastSyncPayload`** — сохраняется последний успешный ответ **`LOGIN`/`sync()`** (в т.ч. массив `chats`). На **TCP** список **`getChats()`** иногда пустой, тогда чаты брать из **`lastSyncPayload.chats`**.
-- **Скачивание документов `FILE` без `baseUrl` в истории:** **`requestFileDownloadUrl({ chatId, messageId, fileId, fileName?, … })`** — сервер возвращает временный HTTPS-**`url`** для скачивания.
-- **`message.downloadAttachment()`** — для **`_type: FILE`** без URL сам вызывает **`requestFileDownloadUrl`** (нужны корректный **`chatId`** сообщения и **`messageId`**).
-- **`getHistory`**: в каждое сообщение подмешивается **`chatId`** из аргумента запроса (в сырых сообщениях его часто нет).
-- **`Message`**: корректно обрабатывается **`chatId === 0`** (например «Избранное к себе»).
-- **TCP + msgpack:** при наличии **`BigInt`** в исходящем payload включается **`useBigInt64`** при кодировании; входящие пакеты декодируются с **`useBigInt64`**, чтобы **`message.id`** и другие int64 не терялись (выше **`Number.MAX_SAFE_INTEGER`**).
-- **`downloadMedia`:** расширена карта MIME → расширение (`text/plain`, `application/pdf`, …).
-- Новый пример: **`example-download-files.js`** (история чата → папка `downloads/`).
+- **`client.lastSyncPayload`** — stores the last successful **`LOGIN`/`sync()`** response (including the `chats` array). On **TCP** the **`getChats()`** list is sometimes empty; take the chats from **`lastSyncPayload.chats`**.
+- **Downloading `FILE` documents without `baseUrl` in history:** **`requestFileDownloadUrl({ chatId, messageId, fileId, fileName?, … })`** — the server returns a temporary HTTPS **`url`** for downloading.
+- **`message.downloadAttachment()`** — for **`_type: FILE`** without a URL it calls **`requestFileDownloadUrl`** itself (needs the correct **`chatId`** of the message and **`messageId`**).
+- **`getHistory`**: each message is annotated with **`chatId`** from the request argument (raw messages often don't have it).
+- **`Message`**: **`chatId === 0`** is handled correctly (e.g. "Saved messages").
+- **TCP + msgpack:** if the outgoing payload contains **`BigInt`**, **`useBigInt64`** is enabled when encoding; incoming packets are decoded with **`useBigInt64`** so that **`message.id`** and other int64 values aren't lost (above **`Number.MAX_SAFE_INTEGER`**).
+- **`downloadMedia`:** extended MIME → extension map (`text/plain`, `application/pdf`, …).
+- New example: **`example-download-files.ts`** (chat history → `downloads/` folder).
 
-## ✨ Особенности / Features
+## Features
 
-- ✅ **QR-код авторизация** / QR code authentication  
-- ✅ **QR для привязки устройства** (`showLinkDeviceQR`) после входа по SMS/TCP — тот же сценарий, что «Профиль → Устройства → Подключить устройство» в приложении
-- ✅ **Token авторизация** / Token authentication
-- ✅ **SMS + 2FA по паролю** (ANDROID): после кода из SMS при необходимости второй шаг `AUTH_LOGIN_CHECK_PASSWORD` (opcode `0x73`); сохранение пароля в сессии опционально (`saveTwofaPassword`)
-- ✅ **Два транспорта:** WebSocket (WEB) и TCP Socket (ANDROID)
-- ✅ **Автоматическое сохранение сессий** / Automatic session storage
-- ✅ **Ротация токена после `sync()`:** если сервер возвращает новый `token` в ответе `LOGIN`, он сохраняется в `sessions/*.json` (как при SMS/QR)
-- ✅ **Периодический `sync()`** (`sessionRefreshIntervalMs` / `autoSyncIntervalMs`) для продления сессии: на **TCP** после первого `LOGIN` каждый следующий `sync()` — **новое TLS и снова `LOGIN` (19)** (на сокете нельзя второй `LOGIN` подряд; **`SYNC` (21)** с TCP сервер не принимает — см. «Сессии»)
-- ✅ **Автовыбор транспорта** после QR-авторизации (переход на TCP)
-- ✅ **Отправка и получение сообщений** / Send and receive messages
-- ✅ **Загрузка медиа с диска:** `uploadPhoto`, `uploadVideo`, `uploadFile`, `uploadAudio` → `attachments` в `sendMessage` / `sendMessageChannel` / `reply`
-- ✅ **Скачивание вложений:** по **`baseUrl`/`url`** — `downloadUrlToTempFile`, `message.downloadAttachment()`; документы **`FILE`** без URL в истории — **`requestFileDownloadUrl()`**
-- ✅ **Группы и каналы:** создание, инвайты, админы, участники, ссылки, mute, подписка — см. раздел API
-- ✅ **Реакции, пины, настройки профиля и приватности, контакты / блокировка**
-- ✅ **Список устройств (сессий)** и **завершение других сеансов** (`getSessionsInfo`, `closeAllSessionsExceptCurrent`) — как «Профиль → Устройства» в Max
-- ✅ **Сведения о 2FA и установка пароля по trackId** (`getTwoFADetails`, `setTwoFAPassword`)
-- ✅ **Редактирование и удаление сообщений** / Edit and delete messages
-- ✅ **Event-driven архитектура** / Event-driven architecture
-- ✅ **Входящие звонки (TCP):** опкод **`NOTIF_INCOMING_CALL` (137)**, событие **`incoming_call`** / **`onIncomingCall`**, хелперы **`summarizeIncomingCall`** и др.
-- ✅ **Итог звонка в чате:** в **`NOTIF_MESSAGE`** приходит вложение `_type: "CALL"` (`hangupType`, `duration`, `conversationId`) — событие **`call_log`** / **`onCallLog`**, утилиты **`extractCallAttachesFromNotifPayload`**, **`formatCallLogLine`**
-- ✅ **Встроенный лог входящих** (`logIncoming`, `WEBMAX_DEBUG`, `WEBMAX_SILENT`) — JSON в консоль без ручных обработчиков
-- ✅ **TypeScript-ready** структура / TypeScript-ready structure
+- ✅ **QR code authorization**
+- ✅ **QR for device linking** (`showLinkDeviceQR`) after SMS/TCP login — the same flow as "Profile → Devices → Connect device" in the app
+- ✅ **Token authorization**
+- ✅ **SMS + 2FA password** (ANDROID): after the SMS code, when needed, the second step `AUTH_LOGIN_CHECK_PASSWORD` (opcode `0x73`); optionally save the password in the session (`saveTwofaPassword`)
+- ✅ **Two transports:** WebSocket (WEB) and TCP Socket (ANDROID)
+- ✅ **Automatic session storage**
+- ✅ **Token rotation after `sync()`:** if the server returns a new `token` in the `LOGIN` response, it is saved to `sessions/*.json` (like SMS/QR)
+- ✅ **Periodic `sync()`** (`sessionRefreshIntervalMs` / `autoSyncIntervalMs`) to keep the session alive: on **TCP** after the first `LOGIN` each subsequent `sync()` is **new TLS and `LOGIN` (19) again** (a second consecutive `LOGIN` isn't accepted on a socket; **`SYNC` (21)** isn't accepted by the TCP server — see "Sessions")
+- ✅ **Automatic transport selection** after QR authorization (switch to TCP)
+- ✅ **Send and receive messages**
+- ✅ **Media upload from disk:** `uploadPhoto`, `uploadVideo`, `uploadFile`, `uploadAudio` → `attachments` in `sendMessage` / `sendMessageChannel` / `reply`
+- ✅ **Attachment downloads:** by **`baseUrl`/`url`** — `downloadUrlToTempFile`, `message.downloadAttachment()`; **`FILE`** documents without URL in history — **`requestFileDownloadUrl()`**
+- ✅ **Groups and channels:** creation, invites, admins, members, links, mute, subscription — see the API section
+- ✅ **Reactions, pins, profile and privacy settings, contacts / blocking**
+- ✅ **Device (session) list** and **closing other sessions** (`getSessionsInfo`, `closeAllSessionsExceptCurrent`) — like "Profile → Devices" in Max
+- ✅ **2FA details and setting a password by trackId** (`getTwoFADetails`, `setTwoFAPassword`)
+- ✅ **Edit and delete messages**
+- ✅ **Event-driven architecture**
+- ✅ **Incoming calls (TCP):** opcode **`NOTIF_INCOMING_CALL` (137)**, event **`incoming_call`** / **`onIncomingCall`**, helpers **`summarizeIncomingCall`** and others.
+- ✅ **Call summary in a chat:** a **`NOTIF_MESSAGE`** may carry a **`_type: "CALL"`** attachment (`hangupType`, `duration`, `conversationId`) — event **`call_log`** / **`onCallLog`**, utilities **`extractCallAttachesFromNotifPayload`**, **`formatCallLogLine`**
+- ✅ **Built-in incoming log** (`logIncoming`, `WEBMAX_DEBUG`, `WEBMAX_SILENT`) — JSON to the console without manual handlers
+- ✅ **TypeScript** structure
 
-## 📦 Установка / Installation
+## Installation
 
 ```bash
 npm install webmaxsocket
 ```
 
-### Зависимости для Socket транспорта (ANDROID) / Socket transport dependencies
+### Building from source
 
-Ответы сервера по TCP содержат полезную нагрузку в **LZ4**-блоках (поверх **msgpack**). Для распаковки используется **`lz4js`** — чистый JavaScript, **без node-gyp** и нативной сборки, в том числе на Windows без Visual Studio C++. Он входит в зависимости `webmaxsocket` и ставится вместе с пакетом. При необходимости можно доустановить вручную:
+The library is written in **TypeScript**. To compile it (output to `dist/`):
+
+```bash
+npm run build
+```
+
+The compiled entry point is `dist/src/index.js`. The examples (in `example/`) can be run directly from TypeScript with **tsx** — no build required:
+
+```bash
+npm run example
+npm run example:sms
+npm run example:download -- 0 30
+```
+
+### Socket transport dependencies (ANDROID)
+
+TCP responses contain a payload in **LZ4** blocks (on top of **msgpack**). Decompression uses **`lz4js`** — pure JavaScript, **no node-gyp** or native build, including on Windows without Visual Studio C++. It is a dependency of `webmaxsocket` and is installed with the package. If needed you can install it manually:
 
 ```bash
 npm install lz4js
 ```
 
-Дополнительно можно установить нативный модуль **`lz4`**, если в окружении доступна сборка C++:
+You can additionally install the native **`lz4`** module if a C++ toolchain is available in the environment:
 
 ```bash
 npm install lz4
 ```
 
-**Примечание:** Для обычной QR-авторизации (WEB) дополнительные зависимости не нужны. Socket транспорт используется только после сохранения сессии или при явном указании `deviceType: 'ANDROID'`.
+**Note:** For normal QR authorization (WEB) no extra dependencies are required. The Socket transport is only used after saving a session or when `deviceType: 'ANDROID'` is set explicitly.
 
-## 📞 Входящие звонки (TCP / ANDROID)
+## Incoming calls (TCP / ANDROID)
 
-При входящем вызове сервер шлёт **`NOTIF_INCOMING_CALL`** (**opcode 137**): `callerId`, `conversationId`, `type` (`AUDIO` / `VIDEO`), `vcp` (параметры медиа — не логируйте публично).
+On an incoming call the server sends **`NOTIF_INCOMING_CALL`** (**opcode 137**): `callerId`, `conversationId`, `type` (`AUDIO` / `VIDEO`), `vcp` (media parameters — don't log them publicly).
 
-После ответа / отбоя в том же диалоге часто приходит обычное **`NOTIF_MESSAGE`** с пустым текстом и вложением **`_type: "CALL"`**:
+After answering / hanging up, the same dialog often receives a regular **`NOTIF_MESSAGE`** with empty text and a **`_type: "CALL"`** attachment:
 
-| `hangupType` | `duration` | Наблюдаемый смысл |
-|--------------|------------|-------------------|
-| `REJECTED` | `0` | Дозвон не завершился разговором (отклонение, сброс до ответа и т.п.) |
-| `HUNGUP` | `> 0` | Был разговор, затем положили трубку (мс) |
+| `hangupType` | `duration` | Observed meaning |
+|--------------|------------|------------------|
+| `REJECTED` | `0` | The call didn't turn into a conversation (rejected, dropped before answering, etc.) |
+| `HUNGUP` | `> 0` | There was a conversation, then the call was hung up (ms) |
 
-Связать события одного звонка удобно по **`conversationId`**.
+Events of one call can be linked via **`conversationId`**.
 
-**События `EventEmitter`:** `incoming_call` (payload как с сервера), `call_log` (`{ chatId, message, callAttaches, summaries }`).
+**`EventEmitter` events:** `incoming_call` (payload as from the server), `call_log` (`{ chatId, message, callAttaches, summaries }`).
 
-**Парные методы (как `onMessage`):** `onIncomingCall(handler)`, `onCallLog(handler)`.
+**Paired methods (like `onMessage`):** `onIncomingCall(handler)`, `onCallLog(handler)`.
 
-**Отклонение входящего:** экспериментальные методы **`rejectIncomingCall(payload)`** и **`hangupCall(conversationIdOrPayload, { reason? })`** вызывают OK API **`vchat.hangupConversation`** (`conversationId`, `reason`, `anonymToken?`). Для входящего дозвона используйте `reason: 'REJECTED'` (по умолчанию в `rejectIncomingCall`).
+**Rejecting an incoming call:** the experimental methods **`rejectIncomingCall(payload)`** and **`hangupCall(conversationIdOrPayload, { reason? })`** call the OK API **`vchat.hangupConversation`** (`conversationId`, `reason`, `anonymToken?`). For an incoming call use `reason: 'REJECTED'` (default in `rejectIncomingCall`).
 
-**Утилиты:** `summarizeIncomingCall`, `extractCallAttachesFromNotifPayload`, `summarizeCallAttach`, `formatCallLogLine`, `isCallAttach`.
+**Utilities:** `summarizeIncomingCall`, `extractCallAttachesFromNotifPayload`, `summarizeCallAttach`, `formatCallLogLine`, `isCallAttach`.
 
 ```javascript
 const {
@@ -105,11 +121,11 @@ async function main() {
   const client = new WebMaxClient({ name: 'sms_session', deviceType: 'ANDROID' });
 
   client.onIncomingCall(async (payload) => {
-    console.log('Звонок:', summarizeIncomingCall(payload));
+    console.log('Call:', summarizeIncomingCall(payload));
 
-    // Экспериментально: сбросить входящий вызов.
-    // Если OK API вернёт ошибку авторизации, передайте okApiSessionKey/okApiSessionSecret
-    // в конструктор или в options метода.
+    // Experimental: reject the incoming call.
+    // If the OK API returns an authorization error, pass okApiSessionKey/okApiSessionSecret
+    // in the constructor or in the method options.
     await client.rejectIncomingCall(payload);
   });
 
@@ -123,139 +139,140 @@ async function main() {
 main().catch(console.error);
 ```
 
-## 🚀 Быстрый старт / Quick Start
+## Quick Start
 
-### Базовый пример / Basic Example
+### Basic example
 
 ```javascript
 const { WebMaxClient } = require('webmaxsocket');
 
 async function main() {
-  // Инициализация клиента / Initialize client
+  // Initialize the client
   const client = new WebMaxClient({
-    name: 'my_session'  // Имя сессии / Session name
+    name: 'my_session'  // Session name
   });
 
-  // Обработчик запуска / Start handler
+  // Start handler
   client.onStart(async () => {
-    console.log('✅ Бот запущен!');
-    console.log(`👤 Вы вошли как: ${client.me.fullname}`);
+    console.log('✅ Bot started!');
+    console.log(`👤 Signed in as: ${client.me.fullname}`);
   });
 
-  // Обработчик сообщений / Message handler
+  // Message handler
   client.onMessage(async (message) => {
-    // Не отвечаем на свои сообщения / Don't reply to own messages
+    // Don't reply to own messages
     if (message.senderId === client.me.id) return;
-    
+
     console.log(`💬 ${message.getSenderName()}: ${message.text}`);
-    
-    // Автоответ / Auto-reply
+
+    // Auto-reply
     await message.reply({
-      text: `Привет! Я получил: "${message.text}"`
+      text: `Hi! I received: "${message.text}"`
     });
   });
 
-  // Запуск / Start
+  // Start
   await client.start();
 }
 
 main().catch(console.error);
 ```
 
-### Авторизация / Authentication
+### Authorization
 
-#### Способ 1: QR-код (рекомендуется для первого запуска)
+#### Method 1: QR code (recommended for the first run)
 
-При первом запуске вы увидите QR-код в консоли:
+On the first run you will see a QR code in the console:
 
 ```
-🔐 АВТОРИЗАЦИЯ ЧЕРЕЗ QR-КОД
+🔐 QR CODE AUTHORIZATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📱 На телефоне: Профиль → Устройства / Безопасность → Подключить устройство
-📸 Отсканируйте QR-код
+📱 On the phone: Profile → Devices / Security → Connect device
+📸 Scan the QR code
 
 █████████████████████████████
 ...
 ```
 
-После сканирования:
-- Токен и clientSessionId сохраняются автоматически
-- При следующем запуске клиент **автоматически переключится на TCP Socket** для стабильности
-- Повторная авторизация не требуется
+After scanning:
+- The token and clientSessionId are saved automatically
+- On the next run the client **automatically switches to TCP Socket** for stability
+- Re-authorization is not required
 
-#### Способ 2: SMS авторизация (ANDROID)
+#### Method 2: SMS authorization (ANDROID)
 
-Авторизация по номеру телефона с кодом из SMS. Если на аккаунте включена **двухфакторная защита паролем**, после верного SMS-кода сервер возвращает **`passwordChallenge`**; тогда нужен второй шаг — **`sendPassword`** (протокол `AUTH_LOGIN_CHECK_PASSWORD`, как в официальном клиенте).
+Authorization by phone number with a code from SMS. If the account has **two-factor password protection** enabled, after a correct SMS code the server returns a **`passwordChallenge`**; then a second step is required — **`sendPassword`** (protocol `AUTH_LOGIN_CHECK_PASSWORD`, like the official client).
 
 ```javascript
 const client = new WebMaxClient({
   name: 'my_session',
-  deviceType: 'ANDROID', // Обязательно для SMS
-  // saveTwofaPassword: true  // по умолчанию: сохранить пароль 2FA в sessions/*.json
+  deviceType: 'ANDROID', // Required for SMS
+  // saveTwofaPassword: true  // default: save the 2FA password to sessions/*.json
 });
 
 await client.connect();
 
 const authSession = await client.authorizeBySMS('+79001234567');
-const code = '123456'; // код из SMS
+const code = '123456'; // code from SMS
 
 const result = await authSession.sendCode(code);
 
 if (result && typeof result === 'object' && result.needsPassword) {
-  // Подсказка/почта могут быть в result.passwordChallenge
-  await result.sendPassword('ваш_пароль_2FA');
-  // после успеха в сессии появится token; при saveTwofaPassword !== false — поле twofaPassword
+  // The hint/email may be in result.passwordChallenge
+  await result.sendPassword('your_2fa_password');
+  // after success the session gets a token; if saveTwofaPassword !== false — the twofaPassword field
 } else {
-  // Обычный вход без пароля: result — строка-токен (уже выполнен sync внутри sendCode)
+  // Normal login without a password: result is a token string (sync is already done inside sendCode)
 }
 
 await client.triggerHandlers(client.handlers.START);
 ```
 
-**Сессия:** для повторных запусков достаточно **токена** в `sessions/<имя>.json` — SMS и пароль 2FA не нужны, пока токен действителен. Поле **`twofaPassword`** (если включено сохранение) используется при **полном** повторном входе (истёк токен): можно подставить пароль без ручного ввода (в примерах учитываются переменные **`TWOFA_PASSWORD`**, **`ASK_TWOFA=1`** для принудительного запроса в консоль).
+**Session:** for repeated runs only the **token** in `sessions/<name>.json` is enough — SMS and the 2FA password aren't needed while the token is valid. The **`twofaPassword`** field (if saving is enabled) is used for a **full** re-login (expired token): you can supply the password without typing it (the examples respect **`TWOFA_PASSWORD`**, **`ASK_TWOFA=1`** to force a console prompt).
 
-Или запустите готовый пример:
+Or run the ready example:
 
 ```bash
-node example-sms.js
-node example-sms.js +79001234567  # с номером в аргументе
+npm run build
+npm run example:sms
+npm run example:sms -- +79001234567  # with a number argument
 ```
 
-#### QR после входа: привязка второго устройства (ANDROID)
+#### QR after login: linking a second device (ANDROID)
 
-Когда вы уже авторизованы по **TCP** (SMS и сохранённая сессия), запрос **`GET_QR` на том же соединении недоступен** (ответ сервера: недопустимое состояние сессии). Для сценария как в приложении — **показать QR, телефон сканирует** — используйте метод **`showLinkDeviceQR()`**: библиотека открывает **отдельное краткоживущее WebSocket-подключение** (как у [web.max.ru](https://web.max.ru)), запрашивает QR, печатает его в консоль и при необходимости ждёт сканирования.
+When you are already authorized over **TCP** (SMS and a saved session), **`GET_QR` on the same connection is not available** (server response: invalid session state). For the app-like scenario — **show a QR, the phone scans it** — use the **`showLinkDeviceQR()`** method: the library opens a **separate short-lived WebSocket connection** (like [web.max.ru](https://web.max.ru)), requests a QR, prints it to the console and optionally waits for the scan.
 
-Требования: активное соединение и **`isAuthorized`** (обычно после `await client.start()`).
+Requirements: an active connection and **`isAuthorized`** (usually after `await client.start()`).
 
 ```javascript
 await client.start();
 
-// Показать QR и ждать, пока отсканируют в приложении Max на телефоне
+// Show the QR and wait until it is scanned in the Max app on the phone
 await client.showLinkDeviceQR();
 
-// Только показать QR и вернуть данные (без ожидания скана)
+// Only show the QR and return the data (without waiting for the scan)
 const data = await client.showLinkDeviceQR({ waitForScan: false });
 // data: { qrLink, trackId, pollingInterval, expiresAt }
 ```
 
-Опции: `waitForScan` (по умолчанию `true`), `small` — компактный QR в терминале.
+Options: `waitForScan` (default `true`), `small` — compact QR in the terminal.
 
-**Версия клиента:** для выдачи QR сервер ожидает актуальный **`appVersion`** в User-Agent (не ниже **25.12.13**). В конструкторе по умолчанию используется **26.19.2** (`buildNumber: 6733`).
+**Client version:** to issue a QR the server expects a current **`appVersion`** in the User-Agent (at least **25.12.13**). The constructor uses **26.19.2** by default (`buildNumber: 6733`).
 
-Если сервер отвечает **`qr_login.disabled`**, проверьте версию приложения в опциях, откройте [web.max.ru](https://web.max.ru) в браузере или войдите на втором устройстве по номеру телефона.
+If the server replies **`qr_login.disabled`**, check the app version in options, open [web.max.ru](https://web.max.ru) in a browser, or log in on the second device by phone number.
 
-#### Устройства (сессии) и 2FA в аккаунте
+#### Devices (sessions) and account 2FA
 
-После **`start()`** (или `connect` + `sync`) доступны:
+After **`start()`** (or `connect` + `sync`) the following are available:
 
-- **`getSessionsInfo()`** — payload со списком сессий (часто поле **`sessions`**). Удобный разбор: **`WebMaxClient.normalizeSessionsList(payload)`** → массив `{ time, client, info, location, current, raw }`.
-- **`closeAllSessionsExceptCurrent()`** — завершить все сессии, кроме текущей (аналог «Завершить другие сеансы»). Отправляется только **явный список `times` (и варианты `sessionTimes` / `ids`) чужих устройств** из `getSessionsInfo`. Флаги вида `allExceptCurrent` **не используются** — на стороне Max они приводили к инвалидации **текущего** токена. Текущая сессия определяется по полю **`current`** и по совпадению **`deviceId`** с клиентом (см. `normalizeSessionsList`).
-- **`closeSessions(payload)`** — низкоуровневый вызов `SESSIONS_CLOSE` с произвольным телом.
-- **`getTwoFADetails()`** — состояние и параметры 2FA.
-- **`setTwoFAPassword({ trackId, password, hint?, email? })`** — включение или смена пароля по **`trackId`** из сценария приложения; до получения **`trackId`** может понадобиться навигация в официальном клиенте.
+- **`getSessionsInfo()`** — payload with the session list (often the **`sessions`** field). Convenient parsing: **`WebMaxClient.normalizeSessionsList(payload)`** → array of `{ time, client, info, location, current, raw }`.
+- **`closeAllSessionsExceptCurrent()`** — close all sessions except the current one (analogous to "Close other sessions"). Only an **explicit list of `times` (and variants `sessionTimes` / `ids`) of other devices** from `getSessionsInfo` is sent. Flags like `allExceptCurrent` are **not used** — on the Max side they invalidated the **current** token. The current session is determined by the **`current`** field and by matching **`deviceId`** with the client (see `normalizeSessionsList`).
+- **`closeSessions(payload)`** — low-level `SESSIONS_CLOSE` call with an arbitrary body.
+- **`getTwoFADetails()`** — 2FA state and parameters.
+- **`setTwoFAPassword({ trackId, password, hint?, email? })`** — enable or change the password by **`trackId`** from the app scenario; you may need to navigate in the official client to get **`trackId`**.
 
-Пример:
+Example:
 
 ```javascript
 await client.start();
@@ -264,31 +281,31 @@ const info = await client.getSessionsInfo();
 const devices = WebMaxClient.normalizeSessionsList(info);
 console.log(devices);
 
-// по желанию — завершить все, кроме этой сессии
+// optionally — close everything except this session
 // await client.closeAllSessionsExceptCurrent();
 
 const twoFA = await client.getTwoFADetails();
 // await client.setTwoFAPassword({ trackId: '...', password: '...', hint: '...' });
 ```
 
-Готовый скрипт: **`node example-sessions-2fa.js`** (с флагом **`--close-others`** — с подтверждением завершит другие сеансы).
+Ready script: **`npm run example:sessions-2fa`** (with the **`--close-others`** flag — with confirmation it closes other sessions).
 
-#### Способ 3: Token авторизация
+#### Method 3: Token authorization
 
-Если у вас уже есть токен (от другого сервиса/приложения):
+If you already have a token (from another service/app):
 
 ```javascript
 const client = new WebMaxClient({
   name: 'my_session',
-  token: 'An_Sx6HQ9HDiftNkVBNf6Q5PG5D8Oyj...',  // Ваш токен
-  configPath: 'config/myconfig.json',  // Или из файла
+  token: 'An_Sx6HQ9HDiftNkVBNf6Q5PG5D8Oyj...',  // Your token
+  configPath: 'config/myconfig.json',  // Or from a file
   saveToken: true
 });
 
 await client.start();
 ```
 
-Формат конфига (`config/default.json`):
+Config format (`config/default.json`):
 ```json
 {
   "token": "An_Sx6HQ9HDiftNk...",
@@ -300,67 +317,67 @@ await client.start();
 }
 ```
 
-#### Транспорты
+#### Transports
 
-- **WEB** (`deviceType: 'WEB'` или `device_type: 1`) → WebSocket (ws-api.oneme.ru)
-- **ANDROID** (`deviceType: 'ANDROID'` или `device_type: 2/3`) → TCP Socket (api.oneme.ru)
+- **WEB** (`deviceType: 'WEB'` or `device_type: 1`) → WebSocket (ws-api.oneme.ru)
+- **ANDROID** (`deviceType: 'ANDROID'` or `device_type: 2/3`) → TCP Socket (api.oneme.ru)
 
-Клиент **автоматически выбирает** правильный транспорт на основе сохраненного deviceType.
+The client **automatically selects** the right transport based on the saved deviceType.
 
 ## API
 
 ### WebMaxClient
 
-Основной класс для работы с API Max.
+The main class for working with the Max API.
 
-#### Конструктор
+#### Constructor
 
 ```javascript
 const client = new WebMaxClient({
-  name: 'session',        // Имя сессии (для сохранения авторизации)
-  token: 'An_Sx6H...',    // Токен авторизации (опционально)
-  configPath: 'myconfig', // Путь к config файлу (опционально)
-  deviceType: 'WEB',      // Тип устройства: 'WEB' или 'ANDROID' (опционально)
-  saveToken: true,        // Сохранять токен в сессию (по умолчанию true)
-  debug: false,           // TCP/WebSocket: краткий лог opcode; также учитывается WEBMAX_DEBUG=1, DEBUG=1
-  // Лог входящих (JSON в консоль), см. ниже:
-  logIncoming: undefined, // false | 'messages' | 'verbose' — по умолчанию см. таблицу
-  logIncomingVerbose: false, // явно включить verbose (как logIncoming: 'verbose')
-  apiUrl: 'wss://...',    // URL WebSocket API (опционально)
-  maxReconnectAttempts: 5,// Максимальное количество попыток переподключения
-  reconnectDelay: 3000,   // Задержка между попытками переподключения (мс)
-  // Сессия и токен (см. раздел «Сессии»):
-  sessionRefreshIntervalMs: 0, // Периодический sync (мс), минимум 10_000; 0 — выключено. Алиас: autoSyncIntervalMs
-  clearSessionOnFailedSync: false, // connectWithSession: при ошибке sync вызвать session.clear() перед authorize() (по умолчанию false)
-  // User-Agent / клиент (важно для GET_QR, см. showLinkDeviceQR):
-  appVersion: '26.19.2',  // Актуальная версия Android-клиента
-  ua: 'Mozilla/5.0 ...', // или headerUserAgent
+  name: 'session',        // Session name (for saving authorization)
+  token: 'An_Sx6H...',    // Authorization token (optional)
+  configPath: 'myconfig', // Path to the config file (optional)
+  deviceType: 'WEB',      // Device type: 'WEB' or 'ANDROID' (optional)
+  saveToken: true,        // Save the token to the session (default true)
+  debug: false,           // TCP/WebSocket: brief opcode log; also honors WEBMAX_DEBUG=1, DEBUG=1
+  // Incoming log (JSON to the console), see below:
+  logIncoming: undefined, // false | 'messages' | 'verbose' — default see the table
+  logIncomingVerbose: false, // explicitly enable verbose (like logIncoming: 'verbose')
+  apiUrl: 'wss://...',    // WebSocket API URL (optional)
+  maxReconnectAttempts: 5,// Maximum reconnection attempts
+  reconnectDelay: 3000,   // Delay between reconnection attempts (ms)
+  // Session and token (see the "Sessions" section):
+  sessionRefreshIntervalMs: 0, // Periodic sync (ms), minimum 10_000; 0 — disabled. Alias: autoSyncIntervalMs
+  clearSessionOnFailedSync: false, // connectWithSession: on a sync error call session.clear() before authorize() (default false)
+  // User-Agent / client (important for GET_QR, see showLinkDeviceQR):
+  appVersion: '26.19.2',  // Current Android client version
+  ua: 'Mozilla/5.0 ...', // or headerUserAgent
   osVersion: '14',
   screen: '360x780 3.0x',
   timezone: 'Europe/Moscow',
   locale: 'ru',
-  buildNumber: 6733,      // опционально
-  clientSessionId: 1      // опционально
+  buildNumber: 6733,      // optional
+  clientSessionId: 1      // optional
 });
 ```
 
-**Лог входящих (`logIncoming`):** печать блоков `📥 [incoming:…]` с JSON.
+**Incoming log (`logIncoming`):** prints `📥 [incoming:...]` blocks with JSON.
 
-| Значение / условие | Поведение |
-|--------------------|-----------|
-| `logIncoming: false` | Выкл. |
-| `logIncoming: 'messages'` | Только входящие сообщения (`message.rawData`). |
-| `logIncoming: 'verbose'` или `logIncomingVerbose: true` | Сообщения + `connected`, `raw_message`, `message_removed`, `chat_action`, `error`. |
-| не указано | По умолчанию: как `'messages'`; если **`WEBMAX_DEBUG=1`** — как `'verbose'`. Явное **`logIncoming: 'messages'`** отключает расширенный режим даже при `WEBMAX_DEBUG`. |
-| **`WEBMAX_SILENT=1`** | Выкл. всех дампов. |
+| Value / condition | Behavior |
+|-------------------|----------|
+| `logIncoming: false` | Off. |
+| `logIncoming: 'messages'` | Only incoming messages (`message.rawData`). |
+| `logIncoming: 'verbose'` or `logIncomingVerbose: true` | Messages + `connected`, `raw_message`, `message_removed`, `chat_action`, `error`. |
+| not set | Default: like `'messages'`; if **`WEBMAX_DEBUG=1`** — like `'verbose'`. Explicit **`logIncoming: 'messages'`** disables the extended mode even with `WEBMAX_DEBUG`. |
+| **`WEBMAX_SILENT=1`** | Disable all dumps. |
 
-Ручной вывод в том же формате: `client.logIncoming('my_label', data)`. Текущий режим: `client.incomingLogMode` (`'off' \| 'messages' \| 'verbose'`). Низкоуровнево: `resolveIncomingLogMode(options)`, `printIncomingLog(label, payload)` из пакета.
+Manual output in the same format: `client.logIncoming('my_label', data)`. Current mode: `client.incomingLogMode` (`'off' | 'messages' | 'verbose'`). Low-level: `resolveIncomingLogMode(options)`, `printIncomingLog(label, payload)` from the package.
 
-#### Методы
+#### Methods
 
 ##### `start()`
 
-Запускает клиент и устанавливает соединение.
+Starts the client and establishes a connection.
 
 ```javascript
 await client.start();
@@ -368,131 +385,131 @@ await client.start();
 
 ##### `authorizeBySMS(phone)`
 
-Авторизация по номеру телефона через SMS (только для ANDROID). Возвращает объект с полями **`tempToken`**, **`phone`**, **`sendCode`**.
+Authorization by phone number via SMS (ANDROID only). Returns an object with the fields **`tempToken`**, **`phone`**, **`sendCode`**.
 
-**`sendCode(code)`** после ввода кода из SMS:
+**`sendCode(code)`** after entering the SMS code:
 
-- если пароль 2FA **не** требуется — возвращает **строку-токен** (внутри уже выполнены сохранение сессии и **`sync()`**);
-- если требуется 2FA — возвращает объект **`{ needsPassword: true, passwordChallenge, trackId, sendPassword }`**. Вызовите **`await sendPassword(password)`**; при успехе выполняется **`sync()`**, при **`saveTwofaPassword !== false`** (по умолчанию `true`) в файл сессии записывается **`twofaPassword`** для следующих полных входов.
+- if a 2FA password is **not** required — returns a **token string** (session saving and **`sync()`** are already done inside);
+- if 2FA is required — returns **`{ needsPassword: true, passwordChallenge, trackId, sendPassword }`**. Call **`await sendPassword(password)`**; on success **`sync()`** runs, and if **`saveTwofaPassword !== false`** (default `true`) the session file gets **`twofaPassword`** for later full logins.
 
-Опция конструктора **`saveTwofaPassword: false`** отключает запись пароля 2FA в `sessions/*.json`.
+The constructor option **`saveTwofaPassword: false`** disables writing the 2FA password to `sessions/*.json`.
 
-Низкоуровнево на TCP: **`sendCode`** → `AUTH` (18) с `authTokenType: 'CHECK_CODE'`; **`sendPassword`** → **`AUTH_LOGIN_CHECK_PASSWORD`** (`0x73`) с полями **`trackId`** и **`password`** (см. `MaxSocketTransport.sendLogin2FAPassword`).
+Low-level on TCP: **`sendCode`** → `AUTH` (18) with `authTokenType: 'CHECK_CODE'`; **`sendPassword`** → **`AUTH_LOGIN_CHECK_PASSWORD`** (`0x73`) with fields **`trackId`** and **`password`** (see `MaxSocketTransport.sendLogin2FAPassword`).
 
 ```javascript
 await client.connect();
 const authSession = await client.authorizeBySMS('+79001234567');
 const out = await authSession.sendCode('123456');
-if (out && out.needsPassword) await out.sendPassword('…');
+if (out && out.needsPassword) await out.sendPassword('...');
 ```
 
 ##### `showLinkDeviceQR(options)`
 
-Показать в консоли **QR-код для привязки устройства** (как в приложении Max: телефон сканирует QR). Нужна **уже выполненная авторизация** (`start()` или `connect` + `sync`).
+Print a **QR code for linking a device** in the console (like the Max app: the phone scans the QR). Requires **already done authorization** (`start()` or `connect` + `sync`).
 
-- Для **WEB** запрос выполняется по текущему WebSocket.
-- Для **ANDROID** после входа по TCP используется **второе** WebSocket-подключение без повторного `LOGIN` на той сессии (иначе `GET_QR` на том же TCP недоступен).
+- For **WEB** the request is done over the current WebSocket.
+- For **ANDROID** after a TCP login a **second** WebSocket connection is used without a repeated `LOGIN` on that session (otherwise `GET_QR` on the same TCP is unavailable).
 
 ```javascript
 await client.showLinkDeviceQR();
 await client.showLinkDeviceQR({ waitForScan: false, small: false });
 ```
 
-Возвращает `Promise<{ qrLink, trackId, pollingInterval, expiresAt }>`.
+Returns `Promise<{ qrLink, trackId, pollingInterval, expiresAt }>`.
 
 ##### `requestQR()`, `checkQRStatus(trackId)`, `loginByQR(trackId)`, `authorizeByQR()`
 
-Низкоуровневые шаги QR-авторизации для **WEB** (первый вход без SMS). Обычно достаточно `start()` без токена или `authorizeByQR()`.
+Low-level QR authorization steps for **WEB** (first login without SMS). Usually `start()` without a token or `authorizeByQR()` is enough.
 
 ##### `sendMessage(options)`
 
-Отправляет сообщение в чат с уведомлением (notify: true).
+Sends a message to a chat with a notification (notify: true).
 
 ```javascript
 const message = await client.sendMessage({
   chatId: 123,
-  text: 'Привет!',
-  // cid опционально; на TCP не используйте Date.now() (нужен int32)
-  replyTo: null,        // ID сообщения для ответа (опционально)
-  attachments: []       // Вложения (опционально)
+  text: 'Hello!',
+  // cid is optional; on TCP don't use Date.now() (int32 required)
+  replyTo: null,        // ID of the message to reply to (optional)
+  attachments: []       // Attachments (optional)
 });
 ```
 
 ##### `sendMessageChannel(options)`
 
-Отправляет сообщение в канал без уведомления (notify: false). Поля **`text`**, **`replyTo`**, **`attachments`** — те же, что у `sendMessage` (вложения из `uploadPhoto` / `uploadVideo` / `uploadFile` / `uploadAudio`).
+Sends a message to a channel without a notification (notify: false). The fields **`text`**, **`replyTo`**, **`attachments`** are the same as for `sendMessage` (attachments from `uploadPhoto` / `uploadVideo` / `uploadFile` / `uploadAudio`).
 
 ```javascript
 const message = await client.sendMessageChannel({
   chatId: 123,
-  text: 'Сообщение в канал',
+  text: 'Message to the channel',
   replyTo: null,
-  attachments: [] // опционально: [attach] после upload*
+  attachments: [] // optional: [attach] after upload*
 });
 ```
 
 ##### `editMessage(options)`
 
-Редактирует сообщение.
+Edits a message.
 
 ```javascript
 await client.editMessage({
   messageId: 456,
   chatId: 123,
-  text: 'Исправленный текст',
-  attachments: [] // опционально, после upload*
+  text: 'Corrected text',
+  attachments: [] // optional, after upload*
 });
 ```
 
-##### Пины, реакции
+##### Pins, reactions
 
-| Метод | Назначение |
-|--------|------------|
-| `pinMessage({ chatId, messageId, notifyPin })` | Закрепить сообщение |
-| `setMessageReaction({ chatId, messageId, emoji })` | Эмодзи-реакция |
-| `cancelMessageReaction({ chatId, messageId })` | Снять реакцию |
-| `getMessageReactions({ chatId, messageId, count })` | Список реакций |
+| Method | Purpose |
+|--------|---------|
+| `pinMessage({ chatId, messageId, notifyPin })` | Pin a message |
+| `setMessageReaction({ chatId, messageId, emoji })` | Emoji reaction |
+| `cancelMessageReaction({ chatId, messageId })` | Remove the reaction |
+| `getMessageReactions({ chatId, messageId, count })` | List of reactions |
 
-##### Чаты, каналы, группы
+##### Chats, channels, groups
 
-| Метод | Назначение |
-|--------|------------|
-| `getChatInfo(chatIds)` | Информация по id (массив или одно число) |
-| `resolveLink(link)` | Разрешить URL / `join/…` (LINK_INFO) |
-| `joinChatByLink(link)` | Вступить по ссылке |
-| `setChatSubscription(chatId, subscribe)` | Подписка на канал |
-| `createGroup({ title, userIds })` | Новая группа |
-| `createChannel({ title })` | Новый канал |
-| `muteChat(chatId, mute)` | Уведомления чата (не беспокоить) |
-| `getChatMembers({ chatId, marker, count, type })` | Участники (count ≤ 500) |
-| `inviteToChat({ chatId, userIds, showHistory })` | Пригласить |
-| `removeFromChat({ chatId, userIds, cleanMsgPeriod })` | Исключить |
-| `addChatAdmins({ chatId, userIds, permissions })` | Выдать админку (по умолчанию `permissions: 120`) |
-| `removeChatAdmins({ chatId, userIds })` | Снять админку |
-| `transferChatOwnership({ chatId, newOwnerId })` | Передать владение |
-| `setGroupOptions({ chatId, options })` | Настройки группы (`ALL_CAN_PIN_MESSAGE`, …) |
-| `resolveChannelByUsername(username)` | Канал по @username |
-| `joinChannelByUsername(username)` | Вступить по @username |
-| `resolveInviteHash(hash)` | Инвайт по хэшу без префикса `join/` |
+| Method | Purpose |
+|--------|---------|
+| `getChatInfo(chatIds)` | Info by id (array or a single number) |
+| `resolveLink(link)` | Resolve a URL / `join/...` (LINK_INFO) |
+| `joinChatByLink(link)` | Join by link |
+| `setChatSubscription(chatId, subscribe)` | Channel subscription |
+| `createGroup({ title, userIds })` | New group |
+| `createChannel({ title })` | New channel |
+| `muteChat(chatId, mute)` | Chat notifications (do not disturb) |
+| `getChatMembers({ chatId, marker, count, type })` | Members (count ≤ 500) |
+| `inviteToChat({ chatId, userIds, showHistory })` | Invite |
+| `removeFromChat({ chatId, userIds, cleanMsgPeriod })` | Remove |
+| `addChatAdmins({ chatId, userIds, permissions })` | Grant admin (default `permissions: 120`) |
+| `removeChatAdmins({ chatId, userIds })` | Revoke admin |
+| `transferChatOwnership({ chatId, newOwnerId })` | Transfer ownership |
+| `setGroupOptions({ chatId, options })` | Group settings (`ALL_CAN_PIN_MESSAGE`, …) |
+| `resolveChannelByUsername(username)` | Channel by @username |
+| `joinChannelByUsername(username)` | Join by @username |
+| `resolveInviteHash(hash)` | Invite by hash without the `join/` prefix |
 
-##### Контакты и профиль
+##### Contacts and profile
 
-| Метод | Назначение |
-|--------|------------|
-| `getContacts(contactIds)` | Несколько контактов (массив id) |
-| `addContact(userId)` | В контакты |
-| `blockUser(userId)` | Заблокировать |
-| `updateProfile({ firstName, lastName, description })` | Своё имя / описание |
-| `setHiddenOnline(hidden)` | Скрыть «в сети» |
-| `setFindableByPhone(mode)` | `'ALL'` \| `'CONTACTS'` или boolean |
-| `setCallsPrivacyMode(mode)` | Кто может звонить |
-| `setChatsInvitePrivacy(mode)` | Кто может приглашать в чаты |
+| Method | Purpose |
+|--------|---------|
+| `getContacts(contactIds)` | Several contacts (array of ids) |
+| `addContact(userId)` | Add to contacts |
+| `blockUser(userId)` | Block |
+| `updateProfile({ firstName, lastName, description })` | Your name / description |
+| `setHiddenOnline(hidden)` | Hide "online" |
+| `setFindableByPhone(mode)` | `'ALL'` \| `'CONTACTS'` or boolean |
+| `setCallsPrivacyMode(mode)` | Who can call you |
+| `setChatsInvitePrivacy(mode)` | Who can invite you to chats |
 
-Часть методов требует прав в чате; ответы сервера зависят от роли и типа чата.
+Some methods require chat permissions; server responses depend on the role and chat type.
 
 ##### `deleteMessage(options)`
 
-Удаляет сообщение.
+Deletes a message.
 
 ```javascript
 await client.deleteMessage({
@@ -503,7 +520,7 @@ await client.deleteMessage({
 
 ##### `forwardMessage(options)`
 
-Пересылает сообщение.
+Forwards a message.
 
 ```javascript
 await client.forwardMessage({
@@ -513,16 +530,16 @@ await client.forwardMessage({
 });
 ```
 
-##### Загрузка медиа для `attachments`
+##### Uploading media for `attachments`
 
-Все методы ниже возвращают объект(ы), которые передаются в **`attachments`** у `sendMessage`, **`sendMessageChannel`** и **`message.reply`**. Нужен **Node.js 18+** (`fetch`, `FormData`). Схема: опкод загрузки → `UPLOAD_ATTACH_PREP` (65) → HTTP POST на выданный URL. Для **видео** и **файлов** после POST клиент ждёт **`NOTIF_ATTACH` (opcode 136)**.
+All methods below return object(s) passed to **`attachments`** of `sendMessage`, **`sendMessageChannel`** and **`message.reply`**. **Node.js 18+** is required (`fetch`, `FormData`). Flow: upload opcode → `UPLOAD_ATTACH_PREP` (65) → HTTP POST to the returned URL. For **video** and **files** after POST the client waits for **`NOTIF_ATTACH` (opcode 136)**.
 
-| Метод | Результат для `attachments` |
-|--------|-----------------------------|
+| Method | Result for `attachments` |
+|--------|--------------------------|
 | `uploadPhoto(chatId, filePath)` | `{ _type: 'PHOTO', photoToken }` |
 | `uploadVideo(chatId, filePath)` | `{ _type: 'VIDEO', videoId, token }` |
-| `uploadFile(chatId, filePath, options?)` | `{ _type: 'FILE', fileId }` — документы, архивы; `options`: `{ filename, mimeType }` |
-| `uploadAudio(chatId, filePath)` | то же, что `uploadFile` с MIME для `.mp3`, `.ogg`, `.m4a`, `.wav`, … |
+| `uploadFile(chatId, filePath, options?)` | `{ _type: 'FILE', fileId }` — documents, archives; `options`: `{ filename, mimeType }` |
+| `uploadAudio(chatId, filePath)` | same as `uploadFile` with MIME for `.mp3`, `.ogg`, `.m4a`, `.wav`, … |
 
 ```javascript
 const photo = await client.uploadPhoto(chatId, './a.png');
@@ -532,20 +549,20 @@ const audio = await client.uploadAudio(chatId, './track.mp3');
 
 await client.sendMessage({
   chatId,
-  text: 'Набор вложений',
+  text: 'A set of attachments',
   attachments: [photo, video]
 });
 
 await client.sendMessageChannel({
   chatId,
-  text: 'В канал с файлом',
+  text: 'To the channel with a file',
   attachments: [file]
 });
 ```
 
 ##### `sendChatAction(chatId, action)`
 
-Отправляет действие в чате (печатает, выбирает стикер и т.д.).
+Sends a chat action (typing, choosing a sticker, etc.).
 
 ```javascript
 await client.sendChatAction(123, ChatActions.TYPING);
@@ -553,7 +570,7 @@ await client.sendChatAction(123, ChatActions.TYPING);
 
 ##### `getUser(userId)`
 
-Получает информацию о пользователе.
+Gets user info.
 
 ```javascript
 const user = await client.getUser(123);
@@ -561,19 +578,19 @@ const user = await client.getUser(123);
 
 ##### `getUserByPhone(phone)` / `getUserIdByPhone(phone)`
 
-Поиск пользователя по номеру (`CONTACT_INFO_BY_PHONE`, opcode 46). Номер нормализуется (`+79001234567`). Если пользователь не найден или скрыл поиск по телефону — `null`.
+User lookup by phone number (`CONTACT_INFO_BY_PHONE`, opcode 46). The number is normalized (`+79001234567`). If the user isn't found or has hidden phone search — `null`.
 
 ```javascript
 const user = await client.getUserByPhone('+79001234567');
-// User { id, firstname, lastname, phone, ... } или null
+// User { id, firstname, lastname, phone, ... } or null
 
 const id = await client.getUserIdByPhone('89001234567');
-// 123456789 или null
+// 123456789 or null
 ```
 
 ##### `getChats(limit, offset)`
 
-Получает список чатов.
+Gets the chat list.
 
 ```javascript
 const chats = await client.getChats(50, 0);
@@ -581,7 +598,7 @@ const chats = await client.getChats(50, 0);
 
 ##### `getHistory(chatId, from?, backward?, forward?)`
 
-Получает историю сообщений. У каждого элемента в массиве будет **`chatId`**, совпадающий с запрошенным чатом (в ответе сервера поле часто отсутствует).
+Gets message history. Each element in the array will have **`chatId`** matching the requested chat (the server response often omits the field).
 
 ```javascript
 const messages = await client.getHistory(123, Date.now(), 50, 0);
@@ -589,17 +606,17 @@ const messages = await client.getHistory(123, Date.now(), 50, 0);
 
 ##### `requestFileDownloadUrl({ chatId, messageId, fileId, fileName?, requestId?, attachLocalId? })`
 
-Запрашивает **временный HTTPS URL** для вложения **`FILE`**, если в **`attaches`** нет **`baseUrl`**. Идентификаторы **`messageId`**, **`fileId`**, **`chatId`** должны совпадать с данными сообщения (для больших id используйте **`bigint`** из объекта **`Message`**, не округляйте в обычный **`Number`**).
+Requests a **temporary HTTPS URL** for a **`FILE`** attachment when there is no **`baseUrl`** in **`attaches`**. The identifiers **`messageId`**, **`fileId`**, **`chatId`** must match the message data (for large ids use the **`bigint`** from the **`Message`** object, don't round to a plain **`Number`**).
 
-Возвращает **`Promise<string>`** (URL). Проще вызывать **`message.downloadAttachment()`**, он подставит нужные поля сам.
+Returns **`Promise<string>`** (URL). It is simpler to call **`message.downloadAttachment()`**, which fills the fields itself.
 
-##### Свойство `lastSyncPayload`
+##### `lastSyncPayload` property
 
-После успешного **`sync()`** — объект последнего ответа сервера (поля вроде **`chats`**, **`profile`**, …). Удобно, если **`getChats()`** на TCP вернул пустой список.
+After a successful **`sync()`** — the object of the last server response (fields like **`chats`**, **`profile`**, …). Handy if **`getChats()`** returned an empty list on TCP.
 
 ##### `stop()`
 
-Останавливает клиент.
+Stops the client.
 
 ```javascript
 await client.stop();
@@ -607,106 +624,106 @@ await client.stop();
 
 ##### `logout()`
 
-Выполняет выход из аккаунта и удаляет сессию.
+Logs out of the account and deletes the session.
 
 ```javascript
 await client.logout();
 ```
 
-#### Обработчики событий
+#### Event handlers
 
 ##### `onStart(handler)`
 
-Регистрирует обработчик запуска клиента.
+Registers a start handler.
 
 ```javascript
 client.onStart(async () => {
-  console.log('Клиент запущен!');
+  console.log('Client started!');
 });
 ```
 
 ##### `onMessage(handler)`
 
-Регистрирует обработчик новых сообщений.
+Registers a new-message handler.
 
 ```javascript
 client.onMessage(async (message) => {
-  console.log('Новое сообщение:', message.text);
+  console.log('New message:', message.text);
 });
 ```
 
 ##### `onMessageRemoved(handler)`
 
-Регистрирует обработчик удаленных сообщений.
+Registers a removed-message handler.
 
 ```javascript
 client.onMessageRemoved(async (message) => {
-  console.log('Сообщение удалено:', message.text);
+  console.log('Message removed:', message.text);
 });
 ```
 
 ##### `onChatAction(handler)`
 
-Регистрирует обработчик действий в чате.
+Registers a chat-action handler.
 
 ```javascript
 client.onChatAction(async (action) => {
-  console.log('Действие в чате:', action.type);
+  console.log('Chat action:', action.type);
 });
 ```
 
 ##### `onError(handler)`
 
-Регистрирует обработчик ошибок.
+Registers an error handler.
 
 ```javascript
 client.onError(async (error) => {
-  console.error('Ошибка:', error.message);
+  console.error('Error:', error.message);
 });
 ```
 
 ### Message
 
-Класс, представляющий сообщение.
+Class representing a message.
 
-#### Свойства
+#### Properties
 
-- `id` - ID сообщения
-- `cid` - Client ID сообщения
-- `chatId` - ID чата
-- `text` - Текст сообщения
-- `senderId` - ID отправителя
-- `sender` - Объект отправителя (User)
-- `timestamp` - Время отправки
-- `type` - Тип сообщения
-- `isEdited` - Флаг редактирования
-- `replyTo` - ID сообщения, на которое это является ответом
-- `attachments` - Вложения
+- `id` - message ID
+- `cid` - client ID of the message
+- `chatId` - chat ID
+- `text` - message text
+- `senderId` - sender ID
+- `sender` - sender object (User)
+- `timestamp` - send time
+- `type` - message type
+- `isEdited` - edit flag
+- `replyTo` - ID of the message this is a reply to
+- `attachments` - attachments
 
-#### Методы
+#### Methods
 
 ##### `reply(options)`
 
-Отправляет текст **в тот же чат**. По умолчанию **без** цитаты исходного сообщения (`link REPLY`), т.к. на TCP-сокете сервер часто возвращает «Ошибка валидации» для ответа-цитаты. Чтобы попробовать ответ с цитатой: `{ text: '...', quote: true }`.
+Sends text **to the same chat**. By default **without** quoting the original message (`link REPLY`), because on the TCP socket the server often returns a "Validation error" for a quoted reply. To try a quoted reply: `{ text: '...', quote: true }`.
 
 ```javascript
-await message.reply({ text: 'Ответ на сообщение' });
+await message.reply({ text: 'Reply to the message' });
 await message.reply({ text: '...', quote: true });
 ```
 
 ##### `edit(options)`
 
-Редактирует сообщение.
+Edits the message.
 
 ```javascript
 await message.edit({
-  text: 'Новый текст'
+  text: 'New text'
 });
 ```
 
 ##### `delete()`
 
-Удаляет сообщение.
+Deletes the message.
 
 ```javascript
 await message.delete();
@@ -714,7 +731,7 @@ await message.delete();
 
 ##### `forward(chatId)`
 
-Пересылает сообщение.
+Forwards the message.
 
 ```javascript
 await message.forward(789);
@@ -722,32 +739,32 @@ await message.forward(789);
 
 ##### `downloadAttachment(index, options?)`
 
-Скачивает вложение в файл (по умолчанию каталог **`os.tmpdir()`**). Логика:
+Downloads an attachment to a file (default directory **`os.tmpdir()`**). Logic:
 
-- если у вложения есть **`baseUrl`** или **`url`** (часто **`PHOTO`**, стикеры и т.д.) — обычный HTTPS-запрос;
-- если **`_type === 'FILE'`** и URL нет — внутри вызывается **`client.requestFileDownloadUrl()`** (нужны **`message.chatId`** и точный **`message.id`**; после **`getHistory`** они выставлены, **`id` может быть `bigint`**).
+- if the attachment has **`baseUrl`** or **`url`** (often **`PHOTO`**, stickers, etc.) — a regular HTTPS request;
+- if **`_type === 'FILE'`** and there is no URL — **`client.requestFileDownloadUrl()`** is called internally (needs **`message.chatId`** and the exact **`message.id`**; after **`getHistory`** they are set, **`id` may be `bigint`**).
 
-Опции: **`dir`**, **`filename`** (basename). Расширение подбирается по **`Content-Type`** и типу вложения.
+Options: **`dir`**, **`filename`** (basename). The extension is chosen from **`Content-Type`** and the attachment type.
 
-Возвращает `{ path, contentType }`.
+Returns `{ path, contentType }`.
 
 ```javascript
 if (message.attachments.length) {
   const { path, contentType } = await message.downloadAttachment(0);
-  console.log('Сохранено:', path, contentType);
-  // после обработки можно удалить: fs.unlinkSync(path)
+  console.log('Saved:', path, contentType);
+  // after processing you can remove it: fs.unlinkSync(path)
 }
 
-// Свой каталог или имя файла:
+// Custom directory or filename:
 await message.downloadAttachment(0, {
   dir: './downloads',
   filename: 'photo.webp'
 });
 ```
 
-### Утилиты скачивания медиа / Media download helpers
+### Media download helpers
 
-Экспортируются из пакета наряду с `WebMaxClient`:
+Exported from the package along with `WebMaxClient`:
 
 ```javascript
 const {
@@ -759,13 +776,13 @@ const {
 
 ##### `downloadUrlToTempFile(url, options?)`
 
-HTTP(S)-запрос с следованием редиректам, запись тела ответа в файл.
+HTTP(S) request with redirect following, writing the response body to a file.
 
-| Опция | Описание |
-|--------|----------|
-| `dir` | Каталог (по умолчанию `os.tmpdir()`) |
-| `filename` | Имя файла (только basename); если не задано — `max-media-<time>-<random>.<ext>` |
-| `extFallback` | Расширение, если по `Content-Type` определить не удалось (например `'.jpg'`) |
+| Option | Description |
+|--------|-------------|
+| `dir` | Directory (default `os.tmpdir()`) |
+| `filename` | Filename (basename only); if not set — `max-media-<time>-<random>.<ext>` |
+| `extFallback` | Extension when `Content-Type` can't determine it (e.g. `'.jpg'`) |
 
 ```javascript
 const { path, contentType } = await downloadUrlToTempFile(
@@ -776,55 +793,55 @@ const { path, contentType } = await downloadUrlToTempFile(
 
 ##### `extFromContentType(contentType)` / `extFromAttachType(attachType)`
 
-Вспомогательные функции для подбора расширения по MIME или по `_type` вложения (`PHOTO`, `VIDEO`, …).
+Helper functions for choosing the extension by MIME or by the attachment `_type` (`PHOTO`, `VIDEO`, …).
 
 ### User
 
-Класс, представляющий пользователя.
+Class representing a user.
 
-#### Свойства
+#### Properties
 
-- `id` - ID пользователя
-- `firstname` - Имя
-- `lastname` - Фамилия
-- `username` - Имя пользователя
-- `phone` - Номер телефона
-- `avatar` - URL аватара
-- `status` - Статус
-- `bio` - Биография
-- `fullname` - Полное имя (getter)
+- `id` - user ID
+- `firstname` - first name
+- `lastname` - last name
+- `username` - username
+- `phone` - phone number
+- `avatar` - avatar URL
+- `status` - status
+- `bio` - bio
+- `fullname` - full name (getter)
 
 ### ChatAction
 
-Класс, представляющий действие в чате.
+Class representing a chat action.
 
-#### Свойства
+#### Properties
 
-- `type` - Тип действия
-- `chatId` - ID чата
-- `userId` - ID пользователя
-- `user` - Объект пользователя (User)
-- `timestamp` - Время действия
+- `type` - action type
+- `chatId` - chat ID
+- `userId` - user ID
+- `user` - user object (User)
+- `timestamp` - action time
 
-### Константы
+### Constants
 
 #### ChatActions
 
 ```javascript
 const { ChatActions } = require('webmaxsocket');
 
-ChatActions.TYPING          // Печатает
-ChatActions.STICKER         // Выбирает стикер
-ChatActions.FILE            // Отправляет файл
-ChatActions.RECORDING_VOICE // Записывает голосовое
-ChatActions.RECORDING_VIDEO // Записывает видео
+ChatActions.TYPING          // Typing
+ChatActions.STICKER         // Choosing a sticker
+ChatActions.FILE            // Sending a file
+ChatActions.RECORDING_VOICE // Recording voice
+ChatActions.RECORDING_VIDEO // Recording video
 ```
 
 ### MaxSocketTransport
 
-Низкоуровневый TCP Socket транспорт для ANDROID (api.oneme.ru). Входящие пакеты с флагом сжатия распаковываются через **LZ4** (см. раздел **«Зависимости для Socket транспорта»** выше).
+Low-level TCP Socket transport for ANDROID (api.oneme.ru). Incoming packets with the compression flag are decompressed via **LZ4** (see the **"Socket transport dependencies"** section above).
 
-#### Прямое использование (advanced)
+#### Direct use (advanced)
 
 ```javascript
 const { MaxSocketTransport } = require('webmaxsocket');
@@ -841,246 +858,248 @@ await transport.handshake(userAgentPayload);
 const syncData = await transport.sync(token, userAgent);
 ```
 
-**Примечание:** В большинстве случаев используйте `WebMaxClient`, который автоматически выбирает нужный транспорт.
+**Note:** In most cases use `WebMaxClient`, which automatically selects the right transport.
 
-## 📚 Примеры
+## Examples
 
-### Пример 1: QR-авторизация (example.js)
-
-```bash
-node example.js
-```
-
-Первый запуск - QR-авторизация, повторные запуски - автоматический вход через TCP Socket.
-
-### Пример 2: Token авторизация (example-token.js)
+### Example 1: QR authorization (example.ts)
 
 ```bash
-# Через config файл
-node example-token.js
-node example-token.js myconfig  # config/myconfig.json
-
-# Через переменную окружения
-TOKEN="ваш_токен" node example-token.js
+npm run build
+npm run example
 ```
 
-### Пример 3: SMS авторизация (example-sms.js)
+First run — QR authorization, subsequent runs — automatic login via TCP Socket.
+
+### Example 2: Token authorization (example-token.ts)
 
 ```bash
-# Интерактивный ввод номера
-node example-sms.js
+# Via a config file
+npm run example:token
+npm run example:token -- myconfig  # config/myconfig.json
 
-# С номером в аргументе
-node example-sms.js +79001234567
+# Via an environment variable
+TOKEN="your_token" npm run example:token
 ```
 
-### Пример 5: Скачивание вложений из истории чата (example-download-files.js)
-
-Нужна **сохранённая Android-сессия** (`sessions/<name>.json`). Скрипт вызывает **`sync()`**, читает историю и сохраняет вложения в **`./downloads/`**.
+### Example 3: SMS authorization (example-sms.ts)
 
 ```bash
-cd node_modules/webmaxsocket   # или из корня клона репозитория
+# Interactive number input
+npm run example:sms
 
-# chatId — число или 0 (например «Избранное к себе»)
-node example-download-files.js 0 30
-
-# Имя сессии и глубина истории через env
-SESSION_NAME=sms_session BACKWARD=50 node example-download-files.js 123456
-
-npm run example:download -- 0 20
+# With a number argument
+npm run example:sms -- +79001234567
 ```
 
-## Структура проекта
+### Example 5: Downloading attachments from chat history (example-download-files.ts)
+
+Requires a **saved Android session** (`sessions/<name>.json`). The script calls **`sync()`**, reads history and saves attachments to **`./downloads/`**.
+
+```bash
+cd node_modules/webmaxsocket   # or from the repository root
+
+# chatId — a number or 0 (e.g. "Saved messages")
+npm run example:download -- 0 30
+
+# Session name and history depth via env
+SESSION_NAME=sms_session BACKWARD=50 npm run example:download -- 123456
+```
+
+## Project structure
 
 ```
 webmaxsocket/
-├── lib/
-│   ├── client.js           # Основной клиент
-│   ├── socketTransport.js  # TCP Socket транспорт
-│   ├── session.js          # Управление сессиями
-│   ├── userAgent.js        # UserAgent генератор
-│   ├── opcodes.js          # Протокол опкоды
-│   ├── constants.js        # Константы
-│   ├── downloadMedia.js    # Скачивание медиа по URL во временный файл
-│   ├── incomingLog.js      # Режим logIncoming / печать входящих
+├── src/
+│   ├── client.ts          # Main client
+│   ├── socketTransport.ts # TCP Socket transport
+│   ├── session.ts         # Session management
+│   ├── userAgent.ts       # UserAgent generator
+│   ├── opcodes.ts         # Protocol opcodes
+│   ├── constants.ts       # Constants
+│   ├── incomingLog.ts     # logIncoming mode / incoming printing
+│   ├── qrWebLogin.ts      # QR track id parsing
+│   ├── callHelpers.ts     # Call notification parsing
+│   ├── index.ts           # Entry point / exports
 │   └── entities/
-│       ├── User.js         # Класс пользователя
-│       ├── Message.js      # Класс сообщения
-│       ├── ChatAction.js   # Класс действия в чате
-│       └── index.js        # Экспорт сущностей
-├── config/                 # Конфигурационные файлы
-│   └── example.json        # Пример конфига
-├── sessions/               # Директория с сохраненными сессиями
-├── index.js                # Точка входа
-├── example.js              # QR-авторизация
-├── example-token.js        # Token авторизация
-├── example-sms.js          # SMS авторизация
-├── example-download-files.js  # Скачивание вложений из истории чата
+│       ├── User.ts        # User class
+│       ├── Message.ts     # Message class
+│       ├── ChatAction.ts  # Chat action class
+│       ├── downloadMedia.ts # Media download helpers
+│       └── index.ts       # Entity exports
+├── example/
+│   ├── example.ts              # QR authorization
+│   ├── example-token.ts        # Token authorization
+│   ├── example-sms.ts          # SMS authorization
+│   ├── example-sessions-2fa.ts # Sessions / 2FA
+│   └── example-download-files.ts # Attachment download from chat history
+├── maxclient-bridge.ts         # Experimental JSON bridge for the PC client
 ├── package.json
-├── api.package.md          # Справочник API (все методы)
+├── tsconfig.json
+├── api.package.md              # API reference (all methods)
 └── README.md
 ```
 
-## Сессии
+## Sessions
 
-Библиотека автоматически сохраняет сессии в директории `sessions/`. При повторном запуске с тем же именем сессии авторизация не требуется.
+The library automatically saves sessions in the `sessions/` directory. On a repeated run with the same session name authorization is not required.
 
-**Токен после `sync()`:** при успешном `LOGIN` (вызов `sync()`) сервер может вернуть новый токен в `tokenAttrs.LOGIN.token`. Если он отличается от сохранённого, библиотека обновляет `this._token` и файл сессии (если `saveToken !== false`). Так ротация на стороне Max не теряется между перезапусками.
+**Token after `sync()`:** on a successful `LOGIN` (a `sync()` call) the server may return a new token in `tokenAttrs.LOGIN.token`. If it differs from the saved one, the library updates `this._token` and the session file (if `saveToken !== false`). This way Max-side rotation isn't lost between restarts.
 
-**TCP (ANDROID) и повторный `sync()`:** на одном TLS‑сокете **второй подряд `LOGIN` (19)** сервер отклоняет («Недопустимое состояние сессии»). Запрос **`SYNC` (21)** на том же транспорте стабильно даёт «Что-то пошло не так» (в веб-клиенте повторная синхронизация идёт через **`LOGIN` (19)**, не через 21). Поэтому после первого успешного `LOGIN` каждый следующий **`sync()`** на TCP: **закрыть сокет → новое соединение → полный `LOGIN` (19)** с телом как у веб (`lastLogin`, счётчики, `presenceSync: -1`, `userAgent`). На **WEB** каждый `sync()` по-прежнему идёт как `LOGIN` на том же WebSocket.
+**TCP (ANDROID) and repeated `sync()`:** on one TLS socket a **second consecutive `LOGIN` (19)** is rejected ("Invalid session state"). The **`SYNC` (21)** request on the same transport reliably gives "Something went wrong" (in the web client a re-sync goes via **`LOGIN` (19)`, not 21). Therefore after the first successful `LOGIN` every subsequent **`sync()`** on TCP: **close the socket → new connection → full `LOGIN` (19)** with the web-like body (`lastLogin`, counters, `presenceSync: -1`, `userAgent`). On **WEB** every `sync()` still goes as `LOGIN` on the same WebSocket.
 
-**Параллельные RPC на одном TCP:** транспорт сопоставляет ответы по **`seq % 256`**. Не вызывайте **`sendAndWait`** (и методы поверх него: `sync`, `getSessionsInfo`, …) **параллельно** на одном клиенте — возможна путаница ответов и ложные ошибки. Выполняйте запросы **последовательно** или используйте очередь.
+**Parallel RPC on one TCP:** the transport matches responses by **`seq % 256`**. Don't call **`sendAndWait`** (and methods on top of it: `sync`, `getSessionsInfo`, …) **in parallel** on one client — responses may get mixed up and produce false errors. Run requests **sequentially** or use a queue.
 
-**Периодическое обновление:** опция **`sessionRefreshIntervalMs`** (или **`autoSyncIntervalMs`**) — интервал для повторного `sync()` (минимум **10 с**). На **TCP** каждый такой вызов обычно **снова открывает TLS** и шлёт **`LOGIN`**. Таймер снимается в **`stop()`**. Ручная очистка: **`client.session.clear()`**.
+**Periodic refresh:** the option **`sessionRefreshIntervalMs`** (or **`autoSyncIntervalMs`**) — the interval for a repeated `sync()` (minimum **10 s**). On **TCP** each such call usually **opens TLS again** and sends **`LOGIN`**. The timer is removed in **`stop()`**. Manual cleanup: **`client.session.clear()`**.
 
-**Повторный вход при ошибке токена из config:** при неудачном `sync()` с токеном из **`options.token`** или **`config`** файл `sessions/*.json` **не очищается** (чтобы сохранить актуальный токен из прошлой авторизации). Для **`connectWithSession()`** очистка перед `authorize()` после ошибки `sync()` выключена по умолчанию; включите **`clearSessionOnFailedSync: true`**, если нужно прежнее поведение «чистый лист».
+**Re-login on a token error from config:** when `sync()` fails with a token from **`options.token`** or the **`config`** file, the `sessions/*.json` file is **not cleared** (to keep the current token from the previous authorization). For **`connectWithSession()`** the cleanup before `authorize()` after a sync error is disabled by default; enable **`clearSessionOnFailedSync: true`** if you want the previous "clean slate" behavior.
 
 ```javascript
-// Создание новой сессии
+// Create a new session
 const client1 = new WebMaxClient({ name: 'account1', phone: '+1234567890' });
 
-// Использование существующей сессии
-const client2 = new WebMaxClient({ name: 'account1' }); // phone не требуется
+// Use an existing session
+const client2 = new WebMaxClient({ name: 'account1' }); // phone is not required
 
-// Пример: раз в 45 минут — sync() для продления ротации токена
+// Example: every 45 minutes — sync() to extend the token rotation
 const client3 = new WebMaxClient({
   name: 'account1',
   sessionRefreshIntervalMs: 45 * 60 * 1000
 });
 ```
 
-## Обработка ошибок
+## Error handling
 
-Рекомендуется всегда оборачивать вызовы API в try-catch блоки:
+It is recommended to always wrap API calls in try-catch blocks:
 
 ```javascript
 try {
   const message = await client.sendMessage({
     chatId: 123,
-    text: 'Привет!'
+    text: 'Hello!'
   });
 } catch (error) {
-  console.error('Ошибка:', error.message);
+  console.error('Error:', error.message);
 }
 ```
 
-## 🔧 Отладка / Debug
+## Debug
 
-Для включения отладочного вывода:
+To enable debug output:
 
 ```javascript
 const client = new WebMaxClient({
   name: 'my_session',
-  debug: true  // или process.env.DEBUG = '1'
+  debug: true  // or process.env.DEBUG = '1'
 });
 ```
 
-Или через переменную окружения:
+Or via an environment variable:
 
 ```bash
 DEBUG=1 node example.js
 ```
 
-## 💡 Важные замечания
+## Important notes
 
-1. **TCP Socket после QR-авторизации:** После первой успешной QR-авторизации клиент автоматически сохраняет `clientSessionId` и переключается на TCP Socket транспорт при следующем запуске для повышения стабильности.
+1. **TCP Socket after QR authorization:** after the first successful QR authorization the client automatically saves `clientSessionId` and switches to the TCP Socket transport on the next run for better stability.
 
-2. **QR для нового устройства после входа по SMS/TCP:** Используйте `showLinkDeviceQR()`. Это не отдельный опкод в протоколе, а тот же `GET_QR`, что и у веб-клиента; для уже залогиненного TCP-сокета запрос выполняется через **эфемерное WebSocket-подключение** (временный файл сессии `_link_qr_*` удаляется после завершения).
+2. **QR for a new device after SMS/TCP login:** use `showLinkDeviceQR()`. This is not a separate protocol opcode, but the same `GET_QR` as the web client; for an already logged-in TCP socket the request is done via an **ephemeral WebSocket connection** (the temporary session file `_link_qr_*` is removed after completion).
 
-3. **Версия `appVersion` и QR/SMS:** Слишком старая версия в User-Agent даёт `qr_login.disabled` или «Приложение устарело». По умолчанию **26.19.2** / **6733**. Константы: `APP_VERSION`, `BUILD_NUMBER` в `lib/constants.js`.
+3. **`appVersion` and QR/SMS:** a too-old version in the User-Agent gives `qr_login.disabled` or "The app is outdated". Default **26.19.2** / **6733**. Constants: `APP_VERSION`, `BUILD_NUMBER` in `src/constants.ts`.
 
-4. **Разница между sendMessage и sendMessageChannel:**
-   - `sendMessage()` - отправка с уведомлением (notify: true) для обычных чатов
-   - `sendMessageChannel()` - отправка без уведомления (notify: false) для каналов
+4. **Difference between sendMessage and sendMessageChannel:**
+   - `sendMessage()` - send with notification (notify: true) for regular chats
+   - `sendMessageChannel()` - send without notification (notify: false) for channels
 
-5. **Автоматический выбор транспорта:** Клиент автоматически определяет какой транспорт использовать на основе `deviceType` в сессии или config файле.
+5. **Automatic transport selection:** the client automatically determines which transport to use based on `deviceType` in the session or config file.
 
-6. **`cid` при отправке сообщений (TCP/Socket):** сервер проверяет **signed int32**. Не передавайте `Date.now()` (миллисекунды ~1e12) — будет «Ошибка валидации». Либо не указывайте `cid` (клиент подставит свой), либо передайте целое в диапазоне **−2³¹ … 2³¹−1**.
+6. **`cid` when sending messages (TCP/Socket):** the server checks **signed int32**. Don't pass `Date.now()` (milliseconds ~1e12) — you'll get a "Validation error". Either omit `cid` (the client supplies its own) or pass an integer in the range **−2³¹ … 2³¹−1**.
 
-7. **TCP и keep-alive (PING):** сервер периодически шлёт `PING`. На WebSocket клиент отвечает `sendPong`; на **TCP** ответ на серверный `PING` — **`PING` с пустым payload**. Дополнительно клиент может слать исходящий **`PING` с `{ interactive: true }`** раз в **30 с** (как веб), опция **`tcpInteractivePingMs`** ( **`0`** — выключить).
+7. **TCP and keep-alive (PING):** the server periodically sends `PING`. On WebSocket the client answers with `sendPong`; on **TCP** the answer to a server `PING` is **`PING` with an empty payload**. Additionally the client can send an outgoing **`PING` with `{ interactive: true }`** every **30 s** (like the web), option **`tcpInteractivePingMs`** (**`0`** — disable).
 
-8. **LZ4:** для ANDROID входящие данные распаковываются из LZ4-блоков; **`lz4js`** входит в зависимости пакета. При необходимости можно установить нативный **`lz4`** (см. раздел **«Зависимости для Socket транспорта»**).
+8. **LZ4:** for ANDROID incoming data is decompressed from LZ4 blocks; **`lz4js`** is a package dependency. If needed you can install the native **`lz4`** (see the **"Socket transport dependencies"** section).
 
-9. **Повторный `sync()` на TCP:** см. **«Сессии»** — **новое TLS и снова `LOGIN` (19)**; второй **`LOGIN` (19)** подряд на **том же** сокете сервер не принимает; **`SYNC` (21)** на TCP не использовать.
+9. **Repeated `sync()` on TCP:** see **"Sessions"** — **new TLS and `LOGIN` (19) again**; a second consecutive **`LOGIN` (19)** on the **same** socket is rejected; **`SYNC` (21)** must not be used on TCP.
 
-10. **`closeAllSessionsExceptCurrent`:** не подставляйте в **`closeSessions`** сырые флаги «закрыть все кроме текущего» без явного списка сессий — есть риск инвалидации своего токена; используйте готовый метод.
+10. **`closeAllSessionsExceptCurrent`:** don't pass raw "close all except current" flags to **`closeSessions`** without an explicit session list — there is a risk of invalidating your own token; use the ready method.
 
-## 📌 История версий / Changelog
+## Changelog
 
 ### 1.2.7
 
-- **Fingerprint 26.19.2 (6733):** обновлены `APP_VERSION` / `BUILD_NUMBER` — сервер больше не отвечает «Приложение устарело» на SMS `AUTH_REQUEST`.
-- **Старые сессии:** `appVersion`/`buildNumber` больше не читаются из `sessions/*.json` (только options/config/дефолт), чтобы устаревший fingerprint не залипал.
-- **`getUserByPhone(phone)` / `getUserIdByPhone(phone)`:** поиск пользователя по номеру через opcode `CONTACT_INFO_BY_PHONE` (46). При `contact.not.found` возвращают `null`.
+- **Fingerprint 26.19.2 (6733):** updated `APP_VERSION` / `BUILD_NUMBER` — the server no longer replies "The app is outdated" to SMS `AUTH_REQUEST`.
+- **Old sessions:** `appVersion`/`buildNumber` are no longer read from `sessions/*.json` (only options/config/default), so an outdated fingerprint doesn't stick.
+- **`getUserByPhone(phone)` / `getUserIdByPhone(phone)`:** user lookup by number via opcode `CONTACT_INFO_BY_PHONE` (46). On `contact.not.found` they return `null`.
 
 ### 1.2.6
 
-- **`client.lastSyncPayload`** — сохраняется последний успешный ответ **`LOGIN`/`sync()`** (в т.ч. массив `chats`). На **TCP** список **`getChats()`** иногда пустой, тогда чаты брать из **`lastSyncPayload.chats`**.
-- **Скачивание документов `FILE` без `baseUrl` в истории:** **`requestFileDownloadUrl({ chatId, messageId, fileId, fileName?, … })`** — сервер возвращает временный HTTPS-**`url`** для скачивания.
-- **`message.downloadAttachment()`** — для **`_type: FILE`** без URL сам вызывает **`requestFileDownloadUrl`** (нужны корректный **`chatId`** сообщения и **`messageId`**).
-- **`getHistory`**: в каждое сообщение подмешивается **`chatId`** из аргумента запроса (в сырых сообщениях его часто нет).
-- **`Message`**: корректно обрабатывается **`chatId === 0`** (например «Избранное к себе»).
-- **TCP + msgpack:** при наличии **`BigInt`** в исходящем payload включается **`useBigInt64`** при кодировании; входящие пакеты декодируются с **`useBigInt64`**, чтобы **`message.id`** и другие int64 не терялись (выше **`Number.MAX_SAFE_INTEGER`**).
-- **`downloadMedia`:** расширена карта MIME → расширение (`text/plain`, `application/pdf`, …).
-- Новый пример: **`example-download-files.js`** (история чата → папка `downloads/`).
+- **`client.lastSyncPayload`** — stores the last successful **`LOGIN`/`sync()`** response (including the `chats` array). On **TCP** the **`getChats()`** list is sometimes empty; take the chats from **`lastSyncPayload.chats`**.
+- **Downloading `FILE` documents without `baseUrl` in history:** **`requestFileDownloadUrl({ chatId, messageId, fileId, fileName?, … })`** — the server returns a temporary HTTPS **`url`** for downloading.
+- **`message.downloadAttachment()`** — for **`_type: FILE`** without a URL it calls **`requestFileDownloadUrl`** itself (needs the correct **`chatId`** of the message and **`messageId`**).
+- **`getHistory`**: each message is annotated with **`chatId`** from the request argument (raw messages often don't have it).
+- **`Message`**: **`chatId === 0`** is handled correctly (e.g. "Saved messages").
+- **TCP + msgpack:** if the outgoing payload contains **`BigInt`**, **`useBigInt64`** is enabled when encoding; incoming packets are decoded with **`useBigInt64`**, so **`message.id`** and other int64 values aren't lost (above **`Number.MAX_SAFE_INTEGER`**).
+- **`downloadMedia`:** extended MIME → extension map (`text/plain`, `application/pdf`, …).
+- New example: **`example-download-files.ts`** (chat history → `downloads/` folder).
 
 ### 1.2.5
 
-- **`Opcode.NOTIF_INCOMING_CALL` (137)** — имя опкода в `getOpcodeName`; обработка в TCP/WebSocket: событие **`incoming_call`**, **`onIncomingCall`**, плюс **`raw_message`** как раньше.
-- **`onCallLog`** / событие **`call_log`**: при **`NOTIF_MESSAGE`** с вложением **`_type: "CALL"`** (итог звонка: `hangupType`, `duration`, `conversationId`).
-- **`rejectIncomingCall`** / **`hangupCall`**: экспериментальная отправка сброса звонка через OK API метод **`vchat.hangupConversation`** (`conversationId`, `reason=REJECTED`).
-- Модуль **`lib/callHelpers.js`** (экспорт из пакета): `summarizeIncomingCall`, `extractCallAttachesFromNotifPayload`, `summarizeCallAttach`, `formatCallLogLine`, `isCallAttach`.
+- **`Opcode.NOTIF_INCOMING_CALL` (137)** — opcode name in `getOpcodeName`; handling in TCP/WebSocket: event **`incoming_call`**, **`onIncomingCall`**, plus **`raw_message`** as before.
+- **`onCallLog`** / event **`call_log`**: on **`NOTIF_MESSAGE`** with a **`_type: "CALL"`** attachment (call summary: `hangupType`, `duration`, `conversationId`).
+- **`rejectIncomingCall`** / **`hangupCall`**: experimental call drop via the OK API method **`vchat.hangupConversation`** (`conversationId`, `reason=REJECTED`).
+- Module **`src/callHelpers.ts`** (exported from the package): `summarizeIncomingCall`, `extractCallAttachesFromNotifPayload`, `summarizeCallAttach`, `formatCallLogLine`, `isCallAttach`.
 - **`EventTypes.INCOMING_CALL`**, **`EventTypes.CALL_LOG`**.
 
 ### 1.2.4
 
-- **ANDROID по умолчанию для SMS/TCP:** `device_type: 2/3` нормализуется в `ANDROID`; дефолтный fingerprint обновлён до `appVersion: 26.14.1`, `buildNumber: 6686`.
-- **Удалён устаревший socket example:** SMS-примеры и низкоуровневый TCP-путь теперь используют Android-профиль.
+- **ANDROID by default for SMS/TCP:** `device_type: 2/3` is normalized to `ANDROID`; the default fingerprint is updated to `appVersion: 26.14.1`, `buildNumber: 6686`.
+- **Removed the obsolete socket example:** SMS examples and the low-level TCP path now use the Android profile.
 
 ### 1.2.3
 
-- **TCP / повторный `sync()`:** после первого `LOGIN` каждый следующий `sync()` — **переподключение и полный `LOGIN` (19)** (op. **21** на TCP сервер отклоняет; тело LOGIN с **`lastLogin`** и счётчиками из сессии).
-- **TCP:** периодический исходящий **`PING` `{ interactive: true }`** (~30 с), опция **`tcpInteractivePingMs`**.
-- **`closeAllSessionsExceptCurrent`:** закрытие только по **явным `times`** чужих сессий; без флагов `allExceptCurrent` / `excludeCurrent`; учёт **`deviceId`** и **`current`** при выборе «своей» сессии.
-- **`normalizeSessionsList`:** поле **`deviceId`**, доп. признаки текущей сессии в ответе.
-- **`sync()` / LOGIN:** сохранение нового токена из ответа `tokenAttrs.LOGIN.token` при ротации на сервере.
-- **Ротация токена из входящих пакетов:** рекурсивный разбор **`tokenAttrs.LOGIN.token`** в любом **уведомлении TCP** и в **сообщениях WebSocket** (как в официальном клиенте при пушах ротации), плюс вложенные массивы в ответе LOGIN — чтобы файл сессии не оставался со старым токеном после смены на сервере.
-- **`sessionRefreshIntervalMs`** / **`autoSyncIntervalMs`:** периодический `sync()` в фоне (минимум 10 с), таймер в `stop()`; на TCP типичен **новый TLS** на каждый тик.
-- **`start()`:** при ошибке `sync()` с токеном из config/options вызов **`session.clear()`** убран — файл сессии не теряется.
-- **`clearSessionOnFailedSync`** (по умолчанию `false`): для **`connectWithSession()`** — опционально вызывать **`session.clear()`** перед повторной авторизацией после ошибки `sync()`.
+- **TCP / repeated `sync()`:** after the first `LOGIN` each subsequent `sync()` is **reconnection and a full `LOGIN` (19)** (opcode **21** is rejected on TCP; the LOGIN body has **`lastLogin`** and counters from the session).
+- **TCP:** periodic outgoing **`PING` `{ interactive: true }`** (~30 s), option **`tcpInteractivePingMs`**.
+- **`closeAllSessionsExceptCurrent`:** closing only by **explicit `times`** of other sessions; without the `allExceptCurrent` / `excludeCurrent` flags; **`deviceId`** and **`current`** are considered when choosing "your" session.
+- **`normalizeSessionsList`:** the **`deviceId`** field, extra signs of the current session in the response.
+- **`sync()` / LOGIN:** saving the new token from the `tokenAttrs.LOGIN.token` response on server rotation.
+- **Token rotation from incoming packets:** recursive parsing of **`tokenAttrs.LOGIN.token`** in any **TCP notification** and in **WebSocket messages** (like the official client on rotation pushes), plus nested arrays in the LOGIN response — so the session file doesn't stay with the old token after a server-side change.
+- **`sessionRefreshIntervalMs`** / **`autoSyncIntervalMs`:** periodic `sync()` in the background (minimum 10 s), timer in `stop()`; on TCP a **new TLS** is typical on each tick.
+- **`start()`:** on a `sync()` error with a token from config/options the **`session.clear()`** call was removed — the session file isn't lost.
+- **`clearSessionOnFailedSync`** (default `false`): for **`connectWithSession()`** — optionally call **`session.clear()`** before re-authorization after a sync error.
 
 ### 1.2.1
 
-- Список устройств и завершение других сеансов: **`getSessionsInfo`**, **`normalizeSessionsList`**, **`closeSessions`**, **`closeAllSessionsExceptCurrent`**.
-- 2FA в аккаунте: **`getTwoFADetails`**, **`setTwoFAPassword`**. Пример: **`example-sessions-2fa.js`**.
+- Device list and closing other sessions: **`getSessionsInfo`**, **`normalizeSessionsList`**, **`closeSessions`**, **`closeAllSessionsExceptCurrent`**.
+- Account 2FA: **`getTwoFADetails`**, **`setTwoFAPassword`**. Example: **`example-sessions-2fa.ts`**.
 
 ### 1.2.0
 
-- SMS-авторизация: поддержка **2FA по паролю** после кода из SMS (`passwordChallenge`, `AUTH_LOGIN_CHECK_PASSWORD` / opcode `0x73`).
-- Опция **`saveTwofaPassword`** (по умолчанию включена): сохранение пароля 2FA в файл сессии **`twofaPassword`**.
-- **`MaxSocketTransport`**: метод **`sendLogin2FAPassword(trackId, password)`**.
+- SMS authorization: **2FA password** support after the SMS code (`passwordChallenge`, `AUTH_LOGIN_CHECK_PASSWORD` / opcode `0x73`).
+- Option **`saveTwofaPassword`** (enabled by default): save the 2FA password to the session file **`twofaPassword`**.
+- **`MaxSocketTransport`**: method **`sendLogin2FAPassword(trackId, password)`**.
 
-### 1.1.6 и ранее
+### 1.1.6 and earlier
 
-- См. коммиты и теги в [репозитории](https://github.com/Tellarion/webmaxsocket).
+- See commits and tags in the [repository](https://github.com/Tellarion/webmaxsocket).
 
-## 🔗 Ссылки / Links
+## Links
 
 - [GitHub Repository](https://github.com/Tellarion/webmaxsocket)
 - [NPM Package](https://www.npmjs.com/package/webmaxsocket)
 
-## 📄 Лицензия / License
+## License
 
-MIT License - see LICENSE file for details
+MIT License - see the LICENSE file for details
 
-## 👤 Автор / Author
+## Author
 
 Tellarion - [tellarion.dev](https://tellarion.dev)
 
-## 💝 Поддержка / Support
+## Support
 
-Если вам нравится эта библиотека и вы хотите поддержать разработку:
+If you like this library and want to support the development:
 
 **USDT (TRC20):** `TXfs1iVbp2aLd3rbc4cenVzMoTevP5RbBE`
 
-Спасибо за вашу поддержку!
+Thank you for your support!

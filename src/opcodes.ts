@@ -1,4 +1,4 @@
-const Opcode = {
+export const Opcode = {
   PING: 1,
   DEBUG: 2,
   RECONNECT: 3,
@@ -54,25 +54,18 @@ const Opcode = {
   GET_QR: 288,
   GET_QR_STATUS: 289,
   AUTH_QR_APPROVE: 290,
-  LOGIN_BY_QR: 291,
+  LOGIN_BY_QR: 291
 };
 
-const OpcodeNames = {};
+const OpcodeNames: Record<number, string> = {};
 for (const [name, code] of Object.entries(Opcode)) {
-  OpcodeNames[code] = name;
+  OpcodeNames[code as number] = name;
 }
 
-function getOpcodeName(code) {
+export function getOpcodeName(code: number): string {
   return OpcodeNames[code] || `UNKNOWN_${code}`;
 }
 
-const DeviceType = {
-  WEB: 'WEB',
+export const DeviceType = {
+  WEB: 'WEB'
 };
-
-module.exports = {
-  Opcode,
-  DeviceType,
-  getOpcodeName,
-};
-

@@ -4,10 +4,14 @@ node_modules/
 .git/
 .vscode/
 .idea/
+src/
+example/
 
 # Files
 .gitignore
 .DS_Store
+tsconfig.json
+maxclient-bridge.ts
 *.log
 npm-debug.log*
 yarn-debug.log*

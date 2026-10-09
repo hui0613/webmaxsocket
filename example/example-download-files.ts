@@ -1,18 +1,15 @@
 /**
- * Скачивание вложений из истории чата (с baseUrl или документы без прямого URL).
+ * Downloads attachments from chat history (with baseUrl or documents without a direct URL).
  *
- * Использование:
- *   node example-download-files.js <chatId> [backward]
- *   SESSION_NAME=my_session BACKWARD=80 node example-download-files.js 12345
- *   USE_LAST_OK=1 — подмешать sessions/<name>.last_ok.json
- *
- * Из пакета:
- *   npm run example:download -- 0 30
+ * Usage:
+ *   npm run example:download -- <chatId> [backward]
+ *   SESSION_NAME=my_session BACKWARD=80 npm run example:download -- 12345
+ *   USE_LAST_OK=1 — merge sessions/<name>.last_ok.json
  */
 
-const fs = require('fs');
-const path = require('path');
-const { WebMaxClient } = require('./index');
+import * as fs from 'fs';
+import * as path from 'path';
+import { WebMaxClient } from 'webmaxsocket';
 
 const sessionName = process.env.SESSION_NAME || 'sms_session';
 const useLastOk =
@@ -21,20 +18,20 @@ const useLastOk =
   process.env.USE_LAST_OK === 'yes';
 const downloadDir = path.join(process.cwd(), 'downloads');
 
-function parseChatId(arg) {
+function parseChatId(arg: string): number {
   const s = String(arg).trim();
   if (!/^-?\d+$/.test(s)) {
-    throw new Error(`chatId должен быть целым числом, получено: ${arg}`);
+    throw new Error(`chatId must be an integer, got: ${arg}`);
   }
   return Number(s);
 }
 
-function safeBasename(name, fallback) {
+function safeBasename(name: any, fallback: string): string {
   const base = (name && String(name).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')) || fallback;
   return base.length > 180 ? base.slice(0, 180) : base;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const chatArg = process.argv[2];
   const backward = Math.max(
     1,
@@ -47,8 +44,8 @@ async function main() {
     chatArg === '-h' ||
     chatArg === '--help'
   ) {
-    console.log('Использование: node example-download-files.js <chatId> [backward]\n');
-    console.log('Переменные окружения: SESSION_NAME, BACKWARD, USE_LAST_OK=1, DEBUG=1');
+    console.log('Usage: npm run example:download -- <chatId> [backward]\n');
+    console.log('Environment variables: SESSION_NAME, BACKWARD, USE_LAST_OK=1, DEBUG=1');
     process.exit(chatArg == null || chatArg === '' ? 1 : 0);
   }
 
@@ -65,16 +62,16 @@ async function main() {
     if (fs.existsSync(lastOk)) {
       const snap = JSON.parse(fs.readFileSync(lastOk, 'utf8'));
       Object.assign(client.session.data, snap);
-      console.log('Подмешан снимок сессии:', lastOk);
+      console.log('Merged the session snapshot:', lastOk);
     } else {
-      console.warn('USE_LAST_OK: файл не найден:', lastOk);
+      console.warn('USE_LAST_OK: file not found:', lastOk);
     }
   }
 
   const token = client.session.get('token');
   if (!token) {
     console.error(
-      `Нет токена в sessions/${sessionName}.json. Выполните вход (example-sms.js, example-token.js или QR).`
+      `No token in sessions/${sessionName}.json. Sign in first (example-sms.js, example-token.js or QR).`
     );
     process.exit(1);
   }
@@ -84,14 +81,14 @@ async function main() {
   await client.sync();
 
   if (client.me) {
-    console.log(`Вошли как: ${client.me.fullname || client.me.firstname} (id ${client.me.id})`);
+    console.log(`Signed in as: ${client.me.fullname || client.me.firstname} (id ${client.me.id})`);
   }
 
-  console.log(`Загрузка истории chatId=${chatId}, backward=${backward}…`);
+  console.log(`Loading history chatId=${chatId}, backward=${backward}...`);
 
   const messages = await client.getHistory(chatId, Date.now(), backward, 0);
   const ordered = [...messages].sort(
-    (a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)
+    (a: any, b: any) => Number(a.timestamp || 0) - Number(b.timestamp || 0)
   );
 
   fs.mkdirSync(downloadDir, { recursive: true });
@@ -123,13 +120,13 @@ async function main() {
         });
         console.log(`✓ [${kind}] ${path.basename(savedPath)}  ${contentType || ''}`);
         ok++;
-      } catch (e) {
+      } catch (e: any) {
         console.warn(`⚠ [${kind}] ${filename}: ${e.message}`);
       }
     }
   }
 
-  console.log(`\nГотово: ${ok} файл(ов) → ${downloadDir}`);
+  console.log(`\nDone: ${ok} file(s) → ${downloadDir}`);
 
   try {
     await client.stop();

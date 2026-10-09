@@ -1,241 +1,200 @@
-# WebMaxSocket — справочник API
+# WebMaxSocket — API reference
 
-Краткий перечень возможностей для работы с библиотекой. Подробности и примеры — в `README.md`.
+A concise list of capabilities for working with the library. Details and examples are in `README.md`.
 
-**Зависимости TCP (ANDROID):** ответы по сокету сжаты **LZ4**; для распаковки используется **`lz4js`**. См. `README.md` → «Зависимости для Socket транспорта».
+**TCP dependencies (ANDROID):** socket responses are compressed with **LZ4**; decompression uses **`lz4js`**. See `README.md` → "Socket transport dependencies".
 
 ---
 
-## Экспорт пакета (`require('webmaxsocket')`)
+## Package exports (`require('webmaxsocket')`)
 
-| Символ | Описание |
-|--------|----------|
-| `WebMaxClient` | Основной клиент |
-| `MaxSocketTransport` | Низкоуровневый TCP-транспорт |
-| `User`, `Message`, `ChatAction` | Сущности |
-| `ChatActions`, `EventTypes`, `MessageTypes` | Константы |
-| `Opcode`, `getOpcodeName` | Опкоды протокола |
-| `UserAgentPayload` | User-Agent для handshake |
-| `downloadUrlToTempFile`, `extFromContentType`, `extFromAttachType` | Скачивание медиа по URL |
-| `resolveIncomingLogMode`, `printIncomingLog` | Режим лога входящих |
-| `summarizeIncomingCall`, `isCallAttach`, `extractCallAttachesFromNotifPayload`, `summarizeCallAttach`, `formatCallLogLine` | Парсинг уведомлений о звонках (см. README) |
+| Symbol | Description |
+|--------|-------------|
+| `WebMaxClient` | Main client |
+| `MaxSocketTransport` | Low-level TCP transport |
+| `User`, `Message`, `ChatAction` | Entities |
+| `ChatActions`, `EventTypes`, `MessageTypes` | Constants |
+| `Opcode`, `getOpcodeName` | Protocol opcodes |
+| `UserAgentPayload` | User-Agent for the handshake |
+| `downloadUrlToTempFile`, `extFromContentType`, `extFromAttachType` | Media download by URL |
+| `resolveIncomingLogMode`, `printIncomingLog` | Incoming log mode |
+| `summarizeIncomingCall`, `isCallAttach`, `extractCallAttachesFromNotifPayload`, `summarizeCallAttach`, `formatCallLogLine` | Call notification parsing (see README) |
 
 ---
 
 ## `WebMaxClient`
 
-Клиент наследует `EventEmitter`: `on`, `once`, `emit`, `off` (в т.ч. `connected`, `raw_message`, **`incoming_call`**, **`call_log`**).
+The client extends `EventEmitter`: `on`, `once`, `emit`, `off` (including `connected`, `raw_message`, **`incoming_call`**, **`call_log`**).
 
-### События звонков (TCP)
+### Call events (TCP)
 
-| Событие | Когда |
-|---------|--------|
-| `incoming_call` | Уведомление **`NOTIF_INCOMING_CALL`** (opcode 137) |
-| `call_log` | **`NOTIF_MESSAGE`** с вложением `_type: "CALL"` (итог звонка в чате) |
+| Event | When |
+|-------|------|
+| `incoming_call` | **`NOTIF_INCOMING_CALL`** notification (opcode 137) |
+| `call_log` | **`NOTIF_MESSAGE`** with a `_type: "CALL"` attachment (call summary in a chat) |
 
-Парные регистраторы: **`onIncomingCall(handler)`**, **`onCallLog(handler)`** (данные те же).
+Paired registrators: **`onIncomingCall(handler)`**, **`onCallLog(handler)`** (same data).
 
-### Свойства (полезные)
+### Properties (useful)
 
-| Свойство | Описание |
-|----------|----------|
-| `me` | Профиль после авторизации |
-| `session` | Менеджер сессий |
-| `isConnected`, `isAuthorized` | Состояние |
-| `userAgent` | Текущий User-Agent |
-| `deviceId` | ID устройства |
+| Property | Description |
+|----------|-------------|
+| `me` | Profile after authorization |
+| `session` | Session manager |
+| `isConnected`, `isAuthorized` | State |
+| `userAgent` | Current User-Agent |
+| `deviceId` | Device ID |
 | `incomingLogMode` | `'off'` \| `'messages'` \| `'verbose'` |
 
-### Запуск и соединение
+### Startup and connection
 
-| Метод | Описание |
-|-------|----------|
-| `start()` | Подключение, авторизация, обработчики `onStart` |
-| `connect()` | Только соединение (низкоуровнево) |
-| `connectWithSession()` | Сессия + синхронизация |
-| `handshake()` | Handshake (WebSocket-путь) |
-| `sync()` | На **TCP** первый раз — `LOGIN` (19); каждый следующий — **новое TLS + снова `LOGIN` (19)** (тело с `lastLogin`/счётчиками из сессии; op. **21** на TCP не поддерживается). На **WEB** — `LOGIN` на том же соединении. **`tokenAttrs.LOGIN.token`** — из ответов и уведомлений (рекурсивно) |
-| `fetchMyProfile()` | Загрузка `me` |
-| `stop()` | Закрыть транспорт |
-| `logout()` | Остановка + удаление сессии |
+| Method | Description |
+|--------|-------------|
+| `start()` | Connection, authorization, `onStart` handlers |
+| `connect()` | Connection only (low-level) |
+| `connectWithSession()` | Session + sync |
+| `handshake()` | Handshake (WebSocket path) |
+| `sync()` | On **TCP** the first time — `LOGIN` (19); each subsequent time — **new TLS + `LOGIN` (19) again** (body with `lastLogin`/counters from the session; opcode **21** is not supported on TCP). On **WEB** — `LOGIN` on the same connection. **`tokenAttrs.LOGIN.token`** — from responses and notifications (recursively) |
+| `fetchMyProfile()` | Load `me` |
+| `stop()` | Close the transport |
+| `logout()` | Stop + remove the session |
 
-### Авторизация
+### Authorization
 
-| Метод | Описание |
-|-------|----------|
-| `authorize(phone?)` | Сценарий авторизации по умолчанию |
+| Method | Description |
+|--------|-------------|
+| `authorize(phone?)` | Default authorization scenario |
 | `authorizeByQR()` | QR (WEB) |
-| `authorizeBySMS(phone)` | SMS; возвращает `{ tempToken, phone, sendCode }`. `sendCode(code)` — либо токен (строка), либо при 2FA объект `{ needsPassword, passwordChallenge, trackId, sendPassword }` |
-| *(опции)* | `saveTwofaPassword` (по умолчанию `true`) — писать пароль 2FA в сессию после успешного `sendPassword` |
-| `requestQR()` | Запрос QR |
-| `checkQRStatus(trackId)` | Статус QR |
-| `loginByQR(trackId)` | Завершение по QR |
-| `pollQRStatus(...)` | Ожидание сканирования QR |
-| `showLinkDeviceQR(options?)` | QR «подключить устройство» после входа |
+| `authorizeBySMS(phone)` | SMS; returns `{ tempToken, phone, sendCode }`. `sendCode(code)` — either a token (string), or on 2FA an object `{ needsPassword, passwordChallenge, trackId, sendPassword }` |
+| *(options)* | `saveTwofaPassword` (default `true`) — write the 2FA password to the session after a successful `sendPassword` |
+| `requestQR()` | Request QR |
+| `checkQRStatus(trackId)` | QR status |
+| `loginByQR(trackId)` | Complete by QR |
+| `pollQRStatus(...)` | Wait for the QR scan |
+| `showLinkDeviceQR(options?)` | "Connect device" QR after login |
 
-### Сообщения
+### Messages
 
-| Метод | Описание |
-|-------|----------|
-| `sendMessage({ chatId, text, cid?, replyTo?, attachments? })` | С уведомлением |
-| `sendMessageChannel({ ... })` | Канал, `notify: false` |
-| `editMessage({ chatId, messageId, text, attachments? })` | Редактирование |
-| `deleteMessage({ chatId, messageId, forMe? })` | Удаление |
-| `uploadPhoto(chatId, filePath)` | Вложение фото → `attachments` |
-| `uploadVideo(chatId, filePath)` | Видео |
-| `uploadFile(chatId, filePath, options?)` | Файл |
-| `uploadAudio(chatId, filePath)` | Аудио как файл |
+| Method | Description |
+|--------|-------------|
+| `sendMessage({ chatId, text, cid?, replyTo?, attachments? })` | With notification |
+| `sendMessageChannel({ ... })` | Channel, `notify: false` |
+| `editMessage({ chatId, messageId, text, attachments? })` | Edit |
+| `deleteMessage({ chatId, messageId, forMe? })` | Delete |
+| `uploadPhoto(chatId, filePath)` | Photo attachment → `attachments` |
+| `uploadVideo(chatId, filePath)` | Video |
+| `uploadFile(chatId, filePath, options?)` | File |
+| `uploadAudio(chatId, filePath)` | Audio as a file |
 
-### Пины и реакции
+### Pins and reactions
 
-| Метод | Описание |
-|-------|----------|
-| `pinMessage({ chatId, messageId, notifyPin? })` | Закрепить |
-| `setMessageReaction({ chatId, messageId, emoji })` | Реакция |
-| `cancelMessageReaction({ chatId, messageId })` | Снять реакцию |
-| `getMessageReactions({ chatId, messageId, count? })` | Список реакций |
+| Method | Description |
+|--------|-------------|
+| `pinMessage({ chatId, messageId, notifyPin? })` | Pin |
+| `setMessageReaction({ chatId, messageId, emoji })` | Reaction |
+| `cancelMessageReaction({ chatId, messageId })` | Remove the reaction |
+| `getMessageReactions({ chatId, messageId, count? })` | Reaction list |
 
-### Чаты, каналы, группы
+### Chats, channels, groups
 
-| Метод | Описание |
-|-------|----------|
-| `getChats(marker?)` | Список чатов |
-| `getHistory(chatId, from?, backward?, forward?)` | История; у каждого `Message` дополняется `chatId` |
-| `requestFileDownloadUrl({ chatId, messageId, fileId, fileName?, … })` | Временный URL для скачивания **FILE**, если нет `baseUrl` |
-| `getChatInfo(chatIds)` | Инфо по id |
+| Method | Description |
+|--------|-------------|
+| `getChats(marker?)` | Chat list |
+| `getHistory(chatId, from?, backward?, forward?)` | History; each `Message` gets `chatId` |
+| `requestFileDownloadUrl({ chatId, messageId, fileId, fileName?, … })` | Temporary download URL for **FILE**, when there is no `baseUrl` |
+| `getChatInfo(chatIds)` | Info by id |
 | `resolveLink(link)` | LINK_INFO |
-| `joinChatByLink(link)` | Вступить по ссылке |
-| `setChatSubscription(chatId, subscribe)` | Подписка на канал |
-| `createGroup({ title, userIds })` | Новая группа |
-| `createChannel({ title })` | Новый канал |
-| `muteChat(chatId, mute?)` | Не беспокоить для чата |
-| `getChatMembers({ chatId, marker?, count?, type? })` | Участники |
-| `inviteToChat({ chatId, userIds, showHistory? })` | Пригласить |
-| `removeFromChat({ chatId, userIds, cleanMsgPeriod? })` | Исключить |
-| `addChatAdmins({ chatId, userIds, permissions? })` | Админы |
-| `removeChatAdmins({ chatId, userIds })` | Снять админов |
-| `transferChatOwnership({ chatId, newOwnerId })` | Смена владельца |
-| `setGroupOptions({ chatId, options })` | Настройки группы |
-| `resolveChannelByUsername(username)` | Канал по @ |
-| `joinChannelByUsername(username)` | Вступить по @ |
-| `resolveInviteHash(hash)` | Инвайт `join/...` |
+| `joinChatByLink(link)` | Join by link |
+| `setChatSubscription(chatId, subscribe)` | Channel subscription |
+| `createGroup({ title, userIds })` | New group |
+| `createChannel({ title })` | New channel |
+| `muteChat(chatId, mute?)` | Do not disturb for a chat |
+| `getChatMembers({ chatId, marker?, count?, type? })` | Members |
+| `inviteToChat({ chatId, userIds, showHistory? })` | Invite |
+| `removeFromChat({ chatId, userIds, cleanMsgPeriod? })` | Remove |
+| `addChatAdmins({ chatId, userIds, permissions? })` | Admins |
+| `removeChatAdmins({ chatId, userIds })` | Revoke admins |
+| `transferChatOwnership({ chatId, newOwnerId })` | Change owner |
+| `setGroupOptions({ chatId, options })` | Group settings |
+| `resolveChannelByUsername(username)` | Channel by @ |
+| `joinChannelByUsername(username)` | Join by @ |
+| `resolveInviteHash(hash)` | `join/...` invite |
 
-### Контакты и профиль
+### Contacts and profile
 
-| Метод | Описание |
-|-------|----------|
-| `getUser(userId)` | Один контакт → `User` |
-| `getUserByPhone(phone)` | Поиск по телефону (`CONTACT_INFO_BY_PHONE`) → `User` \| `null` |
-| `getUserIdByPhone(phone)` | Только id по телефону → `id` \| `null` |
-| `getContacts(contactIds)` | Несколько контактов (сырой ответ) |
-| `addContact(userId)` | В контакты |
-| `blockUser(userId)` | Блокировка |
-| `updateProfile({ firstName?, lastName?, description? })` | Профиль |
-| `setHiddenOnline(hidden)` | Скрыть онлайн |
-| `setFindableByPhone(mode)` | Поиск по телефону |
-| `setCallsPrivacyMode(mode)` | Звонки |
-| `hangupCall(call, options?)` | Экспериментально: завершить звонок через `vchat.hangupConversation` |
-| `rejectIncomingCall(call, options?)` | Экспериментально: отклонить входящий звонок (`reason=REJECTED`) |
-| `setChatsInvitePrivacy(mode)` | Приглашения в чаты |
+| Method | Description |
+|--------|-------------|
+| `getUser(userId)` | One contact → `User` |
+| `getUserByPhone(phone)` | Search by phone (`CONTACT_INFO_BY_PHONE`) → `User` \| `null` |
+| `getUserIdByPhone(phone)` | Only the id by phone → `id` \| `null` |
+| `getContacts(contactIds)` | Several contacts (raw response) |
+| `addContact(userId)` | Add to contacts |
+| `blockUser(userId)` | Block |
+| `updateProfile({ firstName?, lastName?, description? })` | Profile |
+| `setHiddenOnline(hidden)` | Hide online |
+| `setFindableByPhone(mode)` | Search by phone |
+| `setCallsPrivacyMode(mode)` | Calls |
+| `hangupCall(call, options?)` | Experimental: end a call via `vchat.hangupConversation` |
+| `rejectIncomingCall(call, options?)` | Experimental: reject an incoming call (`reason=REJECTED`) |
+| `setChatsInvitePrivacy(mode)` | Chat invites |
 
-### Сессии (устройства) и 2FA
+### Sessions (devices) and 2FA
 
-| Метод | Описание |
-|-------|----------|
-| `getSessionsInfo()` | Список сессий; возвращает **payload** |
-| `WebMaxClient.normalizeSessionsList(payload)` | Массив `{ time, client, info, location, current, raw }` |
-| `closeSessions(payload)` | Закрыть сессии по телу запроса |
-| `closeAllSessionsExceptCurrent()` | Завершить все, кроме текущей: только явные **`times`** чужих сессий (без флагов `allExceptCurrent`); возвращает **payload** или `{ skipped: true }` |
-| `getTwoFADetails()` | Параметры 2FA |
-| `setTwoFAPassword({ trackId, password, hint?, email? })` | Установка или смена пароля 2FA |
+| Method | Description |
+|--------|-------------|
+| `getSessionsInfo()` | Session list; returns the **payload** |
+| `WebMaxClient.normalizeSessionsList(payload)` | Array of `{ time, client, info, location, current, raw }` |
+| `closeSessions(payload)` | Close sessions by request body |
+| `closeAllSessionsExceptCurrent()` | Close all except the current one: only explicit **`times`** of other sessions (without `allExceptCurrent` flags); returns the **payload** or `{ skipped: true }` |
+| `getTwoFADetails()` | 2FA parameters |
+| `setTwoFAPassword({ trackId, password, hint?, email? })` | Set or change the 2FA password |
 
-### Обработчики событий
+### Event handlers
 
-| Метод | Событие |
-|-------|---------|
-| `onStart(handler)` | Успешный старт |
-| `onMessage(handler)` | Новое сообщение |
-| `onMessageRemoved(handler)` | Удалено сообщение |
-| `onChatAction(handler)` | Действие в чате |
-| `onIncomingCall(handler)` | Входящий звонок (opcode 137) |
-| `onCallLog(handler)` | Запись о звонке в чате (`CALL` во вложениях сообщения) |
-| `onError(handler)` | Ошибки |
+| Method | Event |
+|--------|-------|
+| `onStart(handler)` | Successful start |
+| `onMessage(handler)` | New message |
+| `onMessageRemoved(handler)` | Message removed |
+| `onChatAction(handler)` | Chat action |
+| `onIncomingCall(handler)` | Incoming call (opcode 137) |
+| `onCallLog(handler)` | Call record in a chat (`CALL` in message attachments) |
+| `onError(handler)` | Errors |
 
-### Состояние после `sync()`
+### State after `sync()`
 
-| Поле | Описание |
-|------|----------|
-| `lastSyncPayload` | Последний успешный ответ `LOGIN`/`sync()` (`chats`, `profile`, …). На TCP, если `getChats()` пустой, использовать `lastSyncPayload.chats` |
+| Field | Description |
+|-------|-------------|
+| `lastSyncPayload` | Last successful `LOGIN`/`sync()` response (`chats`, `profile`, …). On TCP, if `getChats()` is empty, use `lastSyncPayload.chats` |
 
-### Прочее
+### Misc
 
-| Метод | Описание |
-|-------|----------|
-| `logIncoming(label, payload)` | Ручной лог `[incoming:…]` |
-| `sendAndWait(opcode, payload, cmd?, timeout?)` | Низкоуровневый RPC |
-| `triggerHandlers(eventType, data?)` | Внутренний вызов обработчиков (редко нужен снаружи) |
+| Method | Description |
+|--------|-------------|
+| `logIncoming(label, payload)` | Manual `[incoming:...]` log |
+| `sendAndWait(opcode, payload, cmd?, timeout?)` | Low-level RPC |
+| `triggerHandlers(eventType, data?)` | Internal handler invocation (rarely needed outside) |
 
 ---
 
 ## `MaxSocketTransport` (TCP)
 
-| Метод | Описание |
-|-------|----------|
-| `requestCode(phone, language?)` | Запрос SMS (`AUTH_REQUEST`) |
-| `sendCode(tempToken, code)` | Код из SMS (`AUTH` + `CHECK_CODE`) |
-| `sendLogin2FAPassword(trackId, password)` | Пароль 2FA после `passwordChallenge` |
-| `handshake(userAgent)`, `sendAndWait`, `sync`, `getChats`, `getHistory`, `close` | См. `lib/socketTransport.js` |
+| Method | Description |
+|--------|-------------|
+| `requestCode(phone, language?)` | Request SMS (`AUTH_REQUEST`) |
+| `sendCode(tempToken, code)` | Code from SMS (`AUTH` + `CHECK_CODE`) |
+| `sendLogin2FAPassword(trackId, password)` | 2FA password after `passwordChallenge` |
+| `handshake(userAgent)`, `sendAndWait`, `sync`, `getChats`, `getHistory`, `close` | See `src/socketTransport.ts` |
 
 ---
 
 ## `Message`
 
-| Метод / свойство | Описание |
-|------------------|----------|
-| `id`, `cid`, `chatId`, `text`, `senderId`, `sender`, `attachments`, `rawData`, … | Поля |
-| `fetchSender()` | Подгрузить отправителя |
-| `getSenderName()` | Имя для лога |
-| `reply({ text, cid?, attachments?, quote? })` | Ответ в чат |
-| `edit({ text, … })` | Редактировать |
-| `delete()` | Удалить |
-| `forward(chatId)` | В `Message` вызывает `client.forwardMessage` — метод на клиенте может отсутствовать, проверьте версию |
-| `downloadAttachment(index?, options?)` | Сохранить вложение в файл (`baseUrl` или запрос URL для FILE) |
-| `toJSON()`, `toString()` | Сериализация |
-
----
-
-## `ChatAction`
-
-| Свойство | Описание |
-|----------|----------|
-| `type`, `chatId`, `userId`, `user`, `timestamp`, `rawData` | Данные действия |
-| `toString()`, `toJSON()` | Представление |
-
----
-
-## `User`
-
-Основные поля: `id`, `firstname`, `lastname`, `phone`, `avatar`, `fullname` (getter) и др. — см. `lib/entities/User.js`.
-
----
-
-## Константы
-
-- **`EventTypes`**: `START`, `MESSAGE`, `MESSAGE_REMOVED`, `CHAT_ACTION`, `ERROR`, `DISCONNECT`
-- **`ChatActions`**: `TYPING`, `STICKER`, `FILE`, `RECORDING_VOICE`, `RECORDING_VIDEO`
-- **`MessageTypes`**: `TEXT`, `IMAGE`, `VIDEO`, `AUDIO`, `DOCUMENT`, `STICKER`
-
----
-
-## Утилиты (не методы клиента)
-
-| Функция | Описание |
-|---------|----------|
-| `downloadUrlToTempFile(url, { dir?, filename?, extFallback? })` | HTTP → временный файл |
-| `extFromContentType`, `extFromAttachType` | Подбор расширения |
-| `resolveIncomingLogMode(options)` | Режим `logIncoming` из опций конструктора |
-| `printIncomingLog(label, payload)` | Печать JSON в консоль |
-
----
-
-*Файл для быстрой навигации; при расхождении с кодом приоритет у реализации в `lib/`.*
+| Method / property | Description |
+|-------------------|-------------|
+| `id`, `cid`, `chatId`, `text`, `senderId`, `sender`, `attachments`, `rawData`, … | Fields |
+| `fetchSender()` | Load the sender |
+| `getSenderName()` | Name for logging |
+| `reply({ text, cid?, attachments?, quote? })` | Reply in the chat |
+| `edit({ text, ... })` | Edit |
+| `delete()` | Delete |

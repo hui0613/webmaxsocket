@@ -1,18 +1,21 @@
 /**
- * Socket transport для Max API (api.oneme.ru:443)
- * Бинарный протокол msgpack с LZ4 компрессией
- * Используется для ANDROID устройств
+ * Socket transport for the Max API (api.oneme.ru:443).
+ * Binary msgpack protocol with LZ4 compression.
+ * Used for ANDROID devices.
  */
 
-const tls = require('tls');
-const { encode: msgpackEncode, decode: msgpackDecode } = require('@msgpack/msgpack');
-const { v4: uuidv4 } = require('uuid');
+import * as tls from 'tls';
+import { encode as msgpackEncode, decode as msgpackDecode } from '@msgpack/msgpack';
+import { v4 as uuidv4 } from 'uuid';
+import { Opcode, getOpcodeName } from './opcodes';
+import { UserAgentPayload } from './userAgent';
+import { APP_VERSION, BUILD_NUMBER } from './constants';
 
 /**
- * Распаковка LZ4-блока (как в протоколе Max).
- * Сначала нативный `lz4` (нужен node-gyp / VS C++ на Windows), иначе чистый JS `lz4js`.
+ * LZ4 block decompression (as in the Max protocol).
+ * Prefers the native `lz4` (requires node-gyp / VS C++ on Windows), otherwise pure JS `lz4js`.
  */
-function resolveLz4Uncompress() {
+function resolveLz4Uncompress(): (inp: Buffer, out: Buffer) => number {
   try {
     const lz4Binding = require('lz4/lib/binding.js');
     return (inp, out) => lz4Binding.uncompress(inp, out);
@@ -20,29 +23,26 @@ function resolveLz4Uncompress() {
     try {
       const lz4js = require('lz4js');
       return (inp, out) => lz4js.decompressBlock(inp, out, 0, inp.length, 0);
-    } catch (e) {
+    } catch (e: any) {
       throw new Error(
-        'LZ4: установите зависимость `lz4js` (npm i lz4js) или соберите нативный `lz4` (Visual Studio, C++ workload). ' +
+        'LZ4: install the `lz4js` dependency (npm i lz4js) or build the native `lz4` (Visual Studio, C++ workload). ' +
           e.message
       );
     }
   }
 }
 const lz4Uncompress = resolveLz4Uncompress();
-const { Opcode, getOpcodeName } = require('./opcodes');
-const { UserAgentPayload } = require('./userAgent');
-const { APP_VERSION, BUILD_NUMBER } = require('./constants');
 
 const HOST = 'api.oneme.ru';
 const PORT = 443;
 
 /**
- * Формирует бинарный пакет
- * Header: 1b ver, 2b cmd, 1b seq, 2b opcode, 4b payload_len
+ * Builds a binary packet.
+ * Header: 1b ver, 2b cmd, 1b seq, 2b opcode, 4b payload_len.
  */
 const MSGPACK_INT64_OPTS = { useBigInt64: true };
 
-function payloadNeedsBigInt64(v) {
+function payloadNeedsBigInt64(v: any): boolean {
   if (typeof v === 'bigint') return true;
   if (!v || typeof v !== 'object') return false;
   if (Array.isArray(v)) return v.some(payloadNeedsBigInt64);
@@ -52,7 +52,13 @@ function payloadNeedsBigInt64(v) {
   return false;
 }
 
-function packPacket(ver, cmd, seq, opcode, payload) {
+export function packPacket(
+  ver: number,
+  cmd: number,
+  seq: number,
+  opcode: number,
+  payload: any
+): Buffer {
   const payloadBuf = payload
     ? Buffer.from(
         msgpackEncode(
@@ -61,7 +67,7 @@ function packPacket(ver, cmd, seq, opcode, payload) {
         )
       )
     : Buffer.alloc(0);
-  const payloadLen = payloadBuf.length & 0xFFFFFF;
+  const payloadLen = payloadBuf.length & 0xffffff;
   const buf = Buffer.allocUnsafe(10 + payloadBuf.length);
   buf.writeUInt8(ver, 0);
   buf.writeUInt16BE(cmd, 1);
@@ -73,9 +79,9 @@ function packPacket(ver, cmd, seq, opcode, payload) {
 }
 
 /**
- * Парсит ответ. compFlag: raw LZ4 block.
+ * Parses a response. compFlag: raw LZ4 block.
  */
-function unpackPacket(data) {
+export function unpackPacket(data: Buffer): any {
   if (data.length < 10) return null;
   const ver = data.readUInt8(0);
   const cmd = data.readUInt16BE(1);
@@ -83,7 +89,7 @@ function unpackPacket(data) {
   const opcode = data.readUInt16BE(4);
   const packedLen = data.readUInt32BE(6);
   const compFlag = packedLen >> 24;
-  const payloadLength = packedLen & 0xFFFFFF;
+  const payloadLength = packedLen & 0xffffff;
   let payload = null;
 
   if (payloadLength > 0 && data.length >= 10 + payloadLength) {
@@ -104,8 +110,8 @@ function unpackPacket(data) {
   return { ver, cmd, seq, opcode, payload };
 }
 
-/** JSON для логов: bigint → string, обрезка длинных строк */
-function safeJsonForLog(obj, maxLen = 12000) {
+/** JSON for logs: bigint -> string, truncates long strings. */
+function safeJsonForLog(obj: any, maxLen: number = 12000): string {
   if (obj === undefined) return '(no payload)';
   try {
     const s = JSON.stringify(
@@ -113,15 +119,17 @@ function safeJsonForLog(obj, maxLen = 12000) {
       (k, v) => (typeof v === 'bigint' ? v.toString() : v),
       2
     );
-    return s.length > maxLen ? `${s.slice(0, maxLen)}\n… [truncated ${s.length - maxLen} chars]` : s;
+    return s.length > maxLen
+      ? `${s.slice(0, maxLen)}\n… [truncated ${s.length - maxLen} chars]`
+      : s;
   } catch (_) {
     return String(obj);
   }
 }
 
-function readExactlyFromBuffer(transport, n) {
-  return new Promise((resolve) => {
-    const tryResolve = () => {
+function readExactlyFromBuffer(transport: any, n: number): Promise<any> {
+  return new Promise<any>((resolve) => {
+    const tryResolve = (): boolean => {
       if (transport._recvBuffer.length >= n) {
         const result = transport._recvBuffer.subarray(0, n);
         transport._recvBuffer = transport._recvBuffer.subarray(n);
@@ -139,13 +147,26 @@ function readExactlyFromBuffer(transport, n) {
   });
 }
 
-class MaxSocketTransport {
-  constructor(options = {}) {
+export class MaxSocketTransport {
+  host: string;
+  port: number;
+  deviceId: string;
+  deviceType: string;
+  ua: string;
+  debug: boolean;
+  socket: any;
+  seq: number;
+  ver: number;
+  pending: Map<any, any>;
+  _recvBuffer: Buffer;
+  onNotification: ((data: any) => void) | null;
+
+  constructor(options: any = {}) {
     this.host = options.host || HOST;
     this.port = options.port || PORT;
     this.deviceId = options.deviceId || uuidv4();
     this.deviceType = options.deviceType || 'ANDROID';
-    this.ua = options.ua || options.headerUserAgent || 
+    this.ua = options.ua || options.headerUserAgent ||
       'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36';
     this.debug = options.debug || false;
 
@@ -154,17 +175,18 @@ class MaxSocketTransport {
     this.ver = 11;
     this.pending = new Map();
     this._recvBuffer = Buffer.alloc(0);
+    this.onNotification = null;
   }
 
-  _log(...args) {
+  _log(...args: any[]): void {
     if (this.debug) console.log('[Socket]', ...args);
   }
 
-  _debugErr(...args) {
+  _debugErr(...args: any[]): void {
     if (this.debug) console.error('[Socket]', ...args);
   }
 
-  connect() {
+  connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const opts = {
         host: this.host,
@@ -175,7 +197,7 @@ class MaxSocketTransport {
       const sock = tls.connect(opts, () => {
         this.socket = sock;
         this._recvBuffer = Buffer.alloc(0);
-        sock.on('data', (chunk) => {
+        sock.on('data', (chunk: Buffer) => {
           this._recvBuffer = Buffer.concat([this._recvBuffer, chunk]);
         });
         this._log('Connected to', this.host + ':' + this.port);
@@ -187,35 +209,35 @@ class MaxSocketTransport {
     });
   }
 
-  _makeMessage(opcode, payload, cmd = 0) {
+  _makeMessage(opcode: number, payload: any, cmd: number = 0): any {
     this.seq++;
     return {
       ver: this.ver,
       cmd,
       seq: this.seq,
       opcode,
-      // undefined — пустое тело пакета (как GET_QR без payload в web); null/{} — явный объект
-      payload: payload === undefined ? undefined : payload || {},
+      // undefined — empty packet body (like GET_QR without payload on web); null/{} — explicit object
+      payload: payload === undefined ? undefined : payload || {}
     };
   }
 
   /**
-   * Однонаправленная отправка без ожидания ответа (ответ на серверный PING — как WebSocket sendPong).
+   * One-way send without waiting for a reply (answer to a server PING — like WebSocket sendPong).
    */
-  sendOneWay(opcode, payload = {}, cmd = 0) {
+  sendOneWay(opcode: number, payload: any = {}, cmd: number = 0): void {
     if (!this.socket || this.socket.destroyed) return;
     const msg = this._makeMessage(opcode, payload, cmd);
     const packet = packPacket(msg.ver, msg.cmd, msg.seq, msg.opcode, msg.payload);
     this.socket.write(packet);
   }
 
-  _startRecvLoop() {
+  _startRecvLoop(): void {
     const readNext = async () => {
       if (!this.socket || this.socket.destroyed) return;
       try {
         const header = await readExactlyFromBuffer(this, 10);
         const packedLen = header.readUInt32BE(6);
-        const payloadLen = packedLen & 0xFFFFFF;
+        const payloadLen = packedLen & 0xffffff;
         let payloadData = Buffer.alloc(0);
         if (payloadLen > 0) {
           payloadData = await readExactlyFromBuffer(this, payloadLen);
@@ -235,7 +257,7 @@ class MaxSocketTransport {
           }
           if (this.onNotification) this.onNotification(data);
         }
-      } catch (e) {
+      } catch (e: any) {
         if (this.socket && !this.socket.destroyed) {
           this._log('Recv error:', e.message);
         }
@@ -248,7 +270,7 @@ class MaxSocketTransport {
     readNext();
   }
 
-  async sendAndWait(opcode, payload, cmd = 0, timeout = 20000) {
+  async sendAndWait(opcode: number, payload: any, cmd: number = 0, timeout: number = 20000): Promise<any> {
     if (!this.socket || this.socket.destroyed) throw new Error('Socket not connected');
 
     const outMsg = this._makeMessage(opcode, payload, cmd);
@@ -259,8 +281,8 @@ class MaxSocketTransport {
       this._log('→', getOpcodeName(opcode), `(seq=${outMsg.seq})`, safeJsonForLog(payload));
     }
 
-    let pendingRef;
-    const promise = new Promise((resolve, reject) => {
+    let pendingRef: any;
+    const promise = new Promise<any>((resolve, reject) => {
       const t = setTimeout(() => {
         const p = this.pending.get(seqKey);
         if (p) {
@@ -269,13 +291,13 @@ class MaxSocketTransport {
         }
       }, timeout);
       pendingRef = {
-        resolve: (data) => { clearTimeout(t); resolve(data); },
-        reject: (err) => { clearTimeout(t); reject(err); }
+        resolve: (data: any) => { clearTimeout(t); resolve(data); },
+        reject: (err: any) => { clearTimeout(t); reject(err); }
       };
       this.pending.set(seqKey, pendingRef);
     });
 
-    this.socket.write(packet, (err) => {
+    this.socket.write(packet, (err: any) => {
       if (err) {
         const p = this.pending.get(seqKey);
         if (p) {
@@ -304,14 +326,14 @@ class MaxSocketTransport {
         });
       }
 
-      const e = new Error(errText);
+      const e: any = new Error(errText);
       if (this.debug) e.rawPayload = result.payload;
       throw e;
     }
     return result;
   }
 
-  async handshake(userAgentPayload) {
+  async handshake(userAgentPayload?: any): Promise<any> {
     const ua = userAgentPayload || new UserAgentPayload({
       deviceType: this.deviceType,
       headerUserAgent: this.ua,
@@ -330,13 +352,13 @@ class MaxSocketTransport {
     return resp;
   }
 
-  async requestCode(phone, language = 'ru') {
+  async requestCode(phone: string, language: string = 'ru'): Promise<any> {
     const payload = { phone, type: 'START_AUTH', language };
     const data = await this.sendAndWait(Opcode.AUTH_REQUEST, payload);
     return data.payload?.token || null;
   }
 
-  async sendCode(tempToken, code) {
+  async sendCode(tempToken: string, code: string): Promise<any> {
     const payload = {
       token: tempToken,
       verifyCode: code,
@@ -346,7 +368,7 @@ class MaxSocketTransport {
     return data.payload;
   }
 
-  async sendLogin2FAPassword(trackId, password) {
+  async sendLogin2FAPassword(trackId: string, password: string): Promise<any> {
     const payload = {
       trackId: String(trackId).trim(),
       password: String(password)
@@ -355,8 +377,8 @@ class MaxSocketTransport {
     return data.payload;
   }
 
-  async sync(token, userAgentJson) {
-    const payload = {
+  async sync(token: string, userAgentJson?: any): Promise<any> {
+    const payload: any = {
       interactive: true,
       token,
       chatsSync: 0,
@@ -370,12 +392,12 @@ class MaxSocketTransport {
     return data.payload;
   }
 
-  async getChats(marker = 0) {
+  async getChats(marker: number = 0): Promise<any[]> {
     const data = await this.sendAndWait(Opcode.CHATS_LIST, { marker });
     return data.payload?.chats || [];
   }
 
-  async getHistory(chatId, from = Date.now(), backward = 200, forward = 0) {
+  async getHistory(chatId: any, from: number = Date.now(), backward: number = 200, forward: number = 0): Promise<any[]> {
     const data = await this.sendAndWait(Opcode.CHAT_HISTORY, {
       chatId,
       from,
@@ -386,7 +408,7 @@ class MaxSocketTransport {
     return data.payload?.messages || [];
   }
 
-  async close() {
+  async close(): Promise<void> {
     if (this.socket) {
       this.socket.destroy();
       this.socket = null;
@@ -395,5 +417,3 @@ class MaxSocketTransport {
     this.pending.clear();
   }
 }
-
-module.exports = { MaxSocketTransport, packPacket, unpackPacket, HOST, PORT };

@@ -2,14 +2,26 @@
   "name": "webmaxsocket",
   "version": "1.2.7",
   "description": "Node.js client for Max Messenger: QR, token, SMS auth, 2FA, device sessions (TCP)",
-  "main": "index.js",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "require": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "start": "node example.js",
-    "example": "node example.js",
-    "example:token": "node example-token.js",
-    "example:sms": "node example-sms.js",
-    "example:sessions-2fa": "node example-sessions-2fa.js",
-    "example:download": "node example-download-files.js"
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "start": "tsx example/example.ts",
+    "example": "tsx example/example.ts",
+    "example:token": "tsx example/example-token.ts",
+    "example:sms": "tsx example/example-sms.ts",
+    "example:sessions-2fa": "tsx example/example-sessions-2fa.ts",
+    "example:download": "tsx example/example-download-files.ts",
+    "bridge": "tsx maxclient-bridge.ts"
   },
   "keywords": [
     "max",
@@ -24,7 +36,8 @@
     "token-auth",
     "bot",
     "nodejs",
-    "commonjs"
+    "commonjs",
+    "typescript"
   ],
   "author": "Tellarion",
   "license": "MIT",
@@ -46,21 +59,21 @@
   "optionalDependencies": {
     "lz4": "^0.6.5"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.23.15",
+    "typescript": "^5.4.0"
+  },
   "engines": {
     "node": ">=14.0.0"
   },
   "files": [
-    "lib/",
-    "config/",
-    "index.js",
-    "example.js",
-    "example-token.js",
-    "example-sms.js",
-    "example-sessions-2fa.js",
-    "example-download-files.js",
+    "dist/",
+    "src/",
+    "example/",
+    "maxclient-bridge.ts",
     "README.md",
     "api.package.md"
   ]
 }
-

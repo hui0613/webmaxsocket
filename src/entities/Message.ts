@@ -1,11 +1,25 @@
-const User = require('./User');
-const { downloadUrlToTempFile, extFromAttachType } = require('../downloadMedia');
+import { User } from './User';
+import { downloadUrlToTempFile, extFromAttachType } from './downloadMedia';
 
 /**
- * Класс представляющий сообщение
+ * Class representing a message.
  */
-class Message {
-  constructor(data, client) {
+export class Message {
+  client: any;
+  id: any;
+  cid: any;
+  chatId: any;
+  text: any;
+  senderId: any;
+  sender: any;
+  timestamp: any;
+  type: any;
+  isEdited: any;
+  replyTo: any;
+  attachments: any;
+  rawData: any;
+
+  constructor(data: any, client: any) {
     this.client = client;
     this.id =
       data.id ??
@@ -20,32 +34,32 @@ class Message {
         : data.chat_id !== undefined && data.chat_id !== null
           ? data.chat_id
           : null;
-    
-    // Обработка text: может быть строкой или объектом
+
+    // text handling: may be a string or an object
     if (typeof data.text === 'string') {
       this.text = data.text;
     } else if (typeof data.text === 'object' && data.text !== null) {
-      // Если text - объект, ищем текст внутри
+      // If text is an object, look for the text inside
       this.text = data.text.text || JSON.stringify(data.text);
     } else {
       this.text = data.message || '';
     }
-    
-    // Обработка sender: может быть объектом User или просто ID
+
+    // sender handling: may be a User object or just an ID
     if (data.sender) {
       if (typeof data.sender === 'object') {
         this.senderId = data.sender.id;
         this.sender = new User(data.sender);
       } else {
-        // Если sender - это просто ID (число)
+        // If sender is just an ID (number)
         this.senderId = data.sender;
-        this.sender = null; // Будет загружен позже при необходимости
+        this.sender = null; // Will be loaded later when needed
       }
     } else {
       this.senderId = data.senderId || data.sender_id || data.from_id || null;
       this.sender = null;
     }
-    
+
     this.timestamp = data.timestamp || data.time || Date.now();
     this.type = data.type || 'text';
     this.isEdited = data.isEdited || data.is_edited || false;
@@ -53,25 +67,25 @@ class Message {
     this.attachments = data.attaches || data.attachments || [];
     this.rawData = data;
   }
-  
+
   /**
-   * Получить информацию об отправителе
+   * Gets sender information.
    */
-  async fetchSender() {
+  async fetchSender(): Promise<any> {
     if (!this.sender && this.senderId) {
       try {
         this.sender = await this.client.getUser(this.senderId);
-      } catch (error) {
-        console.error('Ошибка загрузки информации об отправителе:', error);
+      } catch (error: any) {
+        console.error('Error loading sender information:', error);
       }
     }
     return this.sender;
   }
-  
+
   /**
-   * Получить имя отправителя
+   * Gets the sender name.
    */
-  getSenderName() {
+  getSenderName(): string {
     if (this.sender) {
       return this.sender.fullname || this.sender.firstname || 'User';
     }
@@ -79,17 +93,17 @@ class Message {
   }
 
   /**
-   * Отправить текст в этот же чат (как ответ собеседнику).
-   * По умолчанию без цитаты (без link REPLY): на TCP-сокете сервер часто отклоняет MSG_SEND с link.
-   * Цитата/ветка: reply({ text, quote: true }) — если сервер вернёт ошибку, оставьте quote: false.
+   * Sends text to the same chat (as a reply to the counterpart).
+   * By default without a quote (without link REPLY): the TCP server often rejects MSG_SEND with a link.
+   * Quote/thread: reply({ text, quote: true }) — if the server returns an error, keep quote: false.
    */
-  async reply(options) {
+  async reply(options: any): Promise<any> {
     if (typeof options === 'string') {
       options = { text: options };
     }
 
     const { text, cid, attachments, quote = false } = options;
-    const payload = {
+    const payload: any = {
       chatId: this.chatId,
       text,
       cid,
@@ -102,9 +116,9 @@ class Message {
   }
 
   /**
-   * Редактировать сообщение
+   * Edits the message.
    */
-  async edit(options) {
+  async edit(options: any): Promise<any> {
     if (typeof options === 'string') {
       options = { text: options };
     }
@@ -118,9 +132,9 @@ class Message {
   }
 
   /**
-   * Удалить сообщение
+   * Deletes the message.
    */
-  async delete() {
+  async delete(): Promise<any> {
     return await this.client.deleteMessage({
       messageId: this.id,
       chatId: this.chatId
@@ -128,17 +142,17 @@ class Message {
   }
 
   /**
-   * Скачать вложение по его baseUrl (HTTPS) во временный файл.
-   * По умолчанию каталог: {@link https://nodejs.org/api/os.html#ostmpdir os.tmpdir()}.
+   * Downloads an attachment by its baseUrl (HTTPS) to a temp file.
+   * Default directory: {@link https://nodejs.org/api/os.html#ostmpdir os.tmpdir()}.
    *
-   * @param {number} [index=0] индекс в массиве attachments
-   * @param {{ dir?: string, filename?: string }} [options]
-   * @returns {Promise<{ path: string, contentType: string }>}
+   * @param index index in the attachments array
+   * @param options
+   * @returns `{ path, contentType }`
    */
-  async downloadAttachment(index = 0, options = {}) {
+  async downloadAttachment(index: number = 0, options: any = {}): Promise<{ path: string; contentType: string }> {
     const att = this.attachments[index];
     if (!att) {
-      throw new Error(`Нет вложения с индексом ${index}`);
+      throw new Error(`No attachment at index ${index}`);
     }
     let url = att.baseUrl || att.url;
     const t = String(att._type || att.type || '').toUpperCase();
@@ -167,16 +181,16 @@ class Message {
       });
     }
     if (!url || typeof url !== 'string') {
-      throw new Error('У вложения нет baseUrl/url и не удалось получить ссылку на файл');
+      throw new Error('The attachment has no baseUrl/url and the file link could not be obtained');
     }
     const extFallback = extFromAttachType(att._type || att.type);
     return downloadUrlToTempFile(url, { ...options, extFallback });
   }
 
   /**
-   * Переслать сообщение
+   * Forwards the message.
    */
-  async forward(chatId) {
+  async forward(chatId: any): Promise<any> {
     return await this.client.forwardMessage({
       messageId: this.id,
       fromChatId: this.chatId,
@@ -185,16 +199,16 @@ class Message {
   }
 
   /**
-   * Возвращает строковое представление сообщения
+   * Returns a string representation of the message.
    */
-  toString() {
+  toString(): string {
     return `Message(id=${this.id}, from=${this.senderId}, text="${this.text.substring(0, 50)}")`;
   }
 
   /**
-   * Возвращает JSON представление
+   * Returns a JSON representation.
    */
-  toJSON() {
+  toJSON(): any {
     return {
       id: this.id,
       cid: this.cid,
@@ -210,6 +224,3 @@ class Message {
     };
   }
 }
-
-module.exports = Message;
-

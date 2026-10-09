@@ -1,17 +1,17 @@
 /**
- * Скачивание медиа по публичному URL (например baseUrl из attaches) во временный файл.
+ * Downloads media from a public URL (for example `baseUrl` from attaches) to a temp file.
  */
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const https = require('https');
-const http = require('http');
-const { pipeline } = require('stream/promises');
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import * as https from 'https';
+import * as http from 'http';
+import { pipeline } from 'stream/promises';
 
 const UA = 'Mozilla/5.0 (compatible; WebMaxSocket/1.1)';
 
-const CONTENT_TYPE_EXT = {
+const CONTENT_TYPE_EXT: Record<string, string> = {
   'image/jpeg': '.jpg',
   'image/jpg': '.jpg',
   'image/png': '.png',
@@ -27,13 +27,13 @@ const CONTENT_TYPE_EXT = {
   'application/x-ns-proxy-autoconfig': '.pac'
 };
 
-function extFromContentType(ct) {
+export function extFromContentType(ct: any): string {
   if (!ct) return '';
   const main = String(ct).split(';')[0].trim().toLowerCase();
   return CONTENT_TYPE_EXT[main] || '';
 }
 
-function extFromAttachType(t) {
+export function extFromAttachType(t: any): string {
   if (!t) return '';
   const u = String(t).toUpperCase();
   if (u === 'PHOTO' || u === 'IMAGE') return '.jpg';
@@ -44,14 +44,12 @@ function extFromAttachType(t) {
 }
 
 /**
- * @param {string} urlString
- * @param {number} maxRedirects
- * @returns {Promise<import('http').IncomingMessage>}
+ * Follows redirects and returns the final HTTP(S) response.
  */
-async function getFinalResponse(urlString, maxRedirects = 10) {
+async function getFinalResponse(urlString: string, maxRedirects: number = 10): Promise<any> {
   let url = String(urlString);
   for (let i = 0; i < maxRedirects; i++) {
-    const res = await new Promise((resolve, reject) => {
+    const res: any = await new Promise((resolve, reject) => {
       const lib = url.startsWith('https') ? https : http;
       const req = lib.request(
         url,
@@ -70,7 +68,7 @@ async function getFinalResponse(urlString, maxRedirects = 10) {
 
     if (res.statusCode !== 200) {
       res.resume();
-      const err = new Error(`HTTP ${res.statusCode}`);
+      const err: any = new Error(`HTTP ${res.statusCode}`);
       err.statusCode = res.statusCode;
       throw err;
     }
@@ -81,15 +79,18 @@ async function getFinalResponse(urlString, maxRedirects = 10) {
 }
 
 /**
- * Скачивает URL во временный файл (по умолчанию каталог ОС: os.tmpdir()).
+ * Downloads a URL to a temp file (default directory: os.tmpdir()).
  *
- * @param {string} url
- * @param {{ dir?: string, filename?: string, extFallback?: string }} [options]
- * @returns {Promise<{ path: string, contentType: string }>}
+ * @param url
+ * @param options
+ * @returns `{ path, contentType }`
  */
-async function downloadUrlToTempFile(url, options = {}) {
+export async function downloadUrlToTempFile(
+  url: string,
+  options: { dir?: string; filename?: string; extFallback?: string } = {}
+): Promise<{ path: string; contentType: string }> {
   if (!url || typeof url !== 'string') {
-    throw new Error('downloadUrlToTempFile: нужен URL строкой');
+    throw new Error('downloadUrlToTempFile: URL must be a string');
   }
 
   const dir = options.dir != null ? String(options.dir) : os.tmpdir();
@@ -121,9 +122,3 @@ async function downloadUrlToTempFile(url, options = {}) {
 
   return { path: destPath, contentType: ct };
 }
-
-module.exports = {
-  downloadUrlToTempFile,
-  extFromContentType,
-  extFromAttachType
-};

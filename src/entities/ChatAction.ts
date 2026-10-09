@@ -1,10 +1,18 @@
-const User = require('./User');
+import { User } from './User';
 
 /**
- * Класс представляющий действие в чате
+ * Class representing a chat action.
  */
-class ChatAction {
-  constructor(data, client) {
+export class ChatAction {
+  client: any;
+  type: any;
+  chatId: any;
+  userId: any;
+  user: any;
+  timestamp: any;
+  rawData: any;
+
+  constructor(data: any, client: any) {
     this.client = client;
     this.type = data.type || data.action || null;
     this.chatId = data.chatId || data.chat_id || null;
@@ -15,16 +23,16 @@ class ChatAction {
   }
 
   /**
-   * Возвращает строковое представление действия
+   * Returns a string representation of the action.
    */
-  toString() {
+  toString(): string {
     return `ChatAction(type=${this.type}, user=${this.userId}, chat=${this.chatId})`;
   }
 
   /**
-   * Возвращает JSON представление
+   * Returns a JSON representation.
    */
-  toJSON() {
+  toJSON(): any {
     return {
       type: this.type,
       chatId: this.chatId,
@@ -34,6 +42,3 @@ class ChatAction {
     };
   }
 }
-
-module.exports = ChatAction;
-

@@ -1,8 +1,19 @@
 /**
- * Класс представляющий пользователя
+ * Class representing a user.
  */
-class User {
-  constructor(data) {
+export class User {
+  id: any;
+  firstname: any;
+  lastname: any;
+  username: any;
+  phone: any;
+  avatar: any;
+  photoId: any;
+  status: any;
+  bio: any;
+  rawData: any;
+
+  constructor(data: any) {
     this.id = data.id || data.userId || data.contactId || null;
     this.firstname = data.firstname || data.firstName || data.first_name || '';
     this.lastname = data.lastname || data.lastName || data.last_name || '';
@@ -16,23 +27,23 @@ class User {
   }
 
   /**
-   * Возвращает полное имя пользователя
+   * Returns the full name of the user.
    */
-  get fullname() {
+  get fullname(): string {
     return `${this.firstname} ${this.lastname}`.trim();
   }
 
   /**
-   * Возвращает строковое представление пользователя
+   * Returns a string representation of the user.
    */
-  toString() {
+  toString(): string {
     return `User(id=${this.id}, name=${this.fullname})`;
   }
 
   /**
-   * Возвращает JSON представление
+   * Returns a JSON representation.
    */
-  toJSON() {
+  toJSON(): any {
     return {
       id: this.id,
       firstname: this.firstname,
@@ -46,6 +57,3 @@ class User {
     };
   }
 }
-
-module.exports = User;
-
