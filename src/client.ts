@@ -61,59 +61,149 @@ function throwIfGetQRRejected(payload: any): void {
 }
 
 /**
+ * Options accepted by the WebMaxClient constructor.
+ */
+export interface WebMaxClientOptions {
+  /** Phone number for SMS authorization (ANDROID). */
+  phone?: string;
+  /** Session name used to persist authorization data. */
+  name?: string;
+  /** Alias for `name`. */
+  session?: string;
+  /** WebSocket API URL. */
+  apiUrl?: string;
+  /** OK API endpoint used by hangupCall / rejectIncomingCall. */
+  okApiEndpoint?: string;
+  /** OK API application key. */
+  okApiApplicationKey?: string;
+  /** OK API session key. */
+  okApiSessionKey?: string;
+  /** OK API session secret used to sign requests. */
+  okApiSessionSecret?: string;
+  /** User-Agent header string. */
+  ua?: string;
+  /** Alias for `ua`. */
+  agent?: string;
+  /** Alias for `ua` (explicit header). */
+  headerUserAgent?: string;
+  /** Path or name of the config file to load. */
+  configPath?: string;
+  /** Alias for `configPath`. */
+  config?: string;
+  /** Authorization token. */
+  token?: string;
+  /** Save the token to the session file (default true). */
+  saveToken?: boolean;
+  /** Save the 2FA password to the session file after login (default true). */
+  saveTwofaPassword?: boolean;
+  /** Origin header for the WebSocket (default https://web.max.ru). */
+  origin?: string;
+  /** Extra Referer header for the WebSocket (e.g. QR from max.ru). */
+  referer?: string;
+  /** Alias for `referer`. */
+  wsReferer?: string;
+  /** Device type: 'WEB' | 'ANDROID', or the numeric code 1 | 2 | 3. */
+  deviceType?: string | number;
+  /** Locale. */
+  locale?: string;
+  /** Device locale. */
+  deviceLocale?: string;
+  /** OS version. */
+  osVersion?: string;
+  /** Device name. */
+  deviceName?: string;
+  /** Screen size string. */
+  screen?: string;
+  /** Timezone. */
+  timezone?: string;
+  /** App version reported to the server. */
+  appVersion?: string;
+  /** Build number reported to the server. */
+  buildNumber?: number;
+  /** Client session id. */
+  clientSessionId?: number;
+  /** Release string. */
+  release?: string;
+  /** Device id. */
+  deviceId?: string;
+  /** Maximum reconnection attempts. */
+  maxReconnectAttempts?: number;
+  /** Delay between reconnection attempts (ms). */
+  reconnectDelay?: number;
+  /** Enable debug logging. */
+  debug?: boolean;
+  /** Enable authorization debug logging. */
+  authDebug?: boolean;
+  /** Back up the session file after a successful sync (default true). */
+  sessionBackup?: boolean;
+  /** Incoming log mode: false | 'messages' | 'verbose'. */
+  logIncoming?: false | 'messages' | 'verbose';
+  /** Explicitly enable verbose incoming logging. */
+  logIncomingVerbose?: boolean;
+  /** Periodic sync interval (ms); alias autoSyncIntervalMs. */
+  sessionRefreshIntervalMs?: number;
+  /** Alias for `sessionRefreshIntervalMs`. */
+  autoSyncIntervalMs?: number;
+  /** TCP interactive PING interval (ms); 0 disables it. */
+  tcpInteractivePingMs?: number;
+  /** Clear the session on a failed sync in connectWithSession (default false). */
+  clearSessionOnFailedSync?: boolean;
+}
+
+/**
  * Main client for working with the Max API.
  */
 class WebMaxClient extends EventEmitter {
-  phone: any;
-  sessionName: any;
-  apiUrl: any;
-  okApiEndpoint: any;
-  okApiApplicationKey: any;
-  okApiSessionKey: any;
-  okApiSessionSecret: any;
-  _explicitOptionToken: any;
-  _configFileToken: any;
-  _providedToken: any;
-  _saveTokenToSession: any;
-  _saveTwofaPassword: any;
-  origin: any;
-  _wsReferer: any;
-  session: any;
-  _handshakeUserAgent: any;
-  userAgent: any;
-  deviceId: any;
-  _useSocketTransport: any;
-  _socketTransport: any;
-  ws: any;
-  me: any;
-  lastSyncPayload: any;
-  isConnected: any;
-  isAuthorized: any;
-  _tcpLoginCompleted: any;
-  reconnectAttempts: any;
-  maxReconnectAttempts: any;
-  reconnectDelay: any;
-  seq: any;
-  ver: any;
-  handlers: any;
-  messageQueue: any;
-  pendingRequests: any;
-  debug: any;
-  _authDebug: any;
-  _sessionBackupOnSuccess: any;
-  _incomingLogMode: any;
-  _clientSendCid: any;
-  _uploadPendingVideo: any;
-  _uploadPendingFile: any;
-  _sessionRefreshIntervalMs: any;
-  _sessionRefreshTimer: any;
-  _sessionRefreshRunning: any;
-  _tcpInteractivePingMs: any;
-  _tcpInteractiveTimer: any;
-  _clearSessionOnFailedSync: any;
-  _token: any;
+  public phone: string | null;
+  public sessionName: string;
+  public apiUrl: string;
+  private okApiEndpoint: string;
+  private okApiApplicationKey: string;
+  private okApiSessionKey: string | null;
+  private okApiSessionSecret: string | null;
+  private _explicitOptionToken: string | null;
+  private _configFileToken: string | null;
+  public _providedToken: string | null;
+  private _saveTokenToSession: boolean;
+  private _saveTwofaPassword: boolean;
+  private origin: string;
+  private _wsReferer: string | null;
+  public session: SessionManager;
+  private _handshakeUserAgent: UserAgentPayload;
+  public userAgent: UserAgentPayload;
+  public deviceId: string;
+  private _useSocketTransport: boolean;
+  private _socketTransport: MaxSocketTransport | null;
+  private ws: WebSocket | null;
+  public me: User | null;
+  public lastSyncPayload: any;
+  public isConnected: boolean;
+  public isAuthorized: boolean;
+  private _tcpLoginCompleted: boolean;
+  private reconnectAttempts: number;
+  private maxReconnectAttempts: number;
+  private reconnectDelay: number;
+  private seq: number;
+  private ver: number;
+  public handlers: Record<string, any[]>;
+  private messageQueue: any[];
+  private pendingRequests: Map<number, any>;
+  public debug: boolean;
+  private _authDebug: boolean;
+  private _sessionBackupOnSuccess: boolean;
+  private _incomingLogMode: any;
+  private _clientSendCid: number;
+  private _uploadPendingVideo: Map<string, () => void>;
+  private _uploadPendingFile: Map<string, () => void>;
+  private _sessionRefreshIntervalMs: number;
+  private _sessionRefreshTimer: ReturnType<typeof setInterval> | null;
+  private _sessionRefreshRunning: boolean;
+  private _tcpInteractivePingMs: number;
+  private _tcpInteractiveTimer: ReturnType<typeof setInterval> | null;
+  private _clearSessionOnFailedSync: boolean;
+  public _token: string | null;
 
-  constructor(options: any = {}) {
+  constructor(options: WebMaxClientOptions = {}) {
     super();
 
     this.phone = options.phone || null;
