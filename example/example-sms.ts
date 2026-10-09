@@ -4,7 +4,7 @@
  */
 
 import * as readline from 'readline';
-import { WebMaxClient, EventTypes } from 'webmaxsocket';
+import { WebMaxClient, EventTypes } from '../src/index';
 
 const SESSION_NAME =
   process.env.WEBMAX_SESSION || process.argv[3] || 'sms_session';

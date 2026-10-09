@@ -1,7 +1,7 @@
 /** Device sessions and 2FA. Requires a token (example-sms.js / test-sms-2fa.js). WEBMAX_SESSION or the name sms_session. */
 
 import * as readline from 'readline';
-import { WebMaxClient } from 'webmaxsocket';
+import { WebMaxClient } from '../src/index';
 
 function ask(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });

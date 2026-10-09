@@ -7,7 +7,7 @@
  * Option 3 — TOKEN in env: TOKEN="..." npm run example:token
  */
 
-import { WebMaxClient } from 'webmaxsocket';
+import { WebMaxClient } from '../src/index';
 
 const CONFIG_NAME = process.argv[2] || process.env.CONFIG || 'default';
 

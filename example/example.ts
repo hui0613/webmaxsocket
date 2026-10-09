@@ -3,7 +3,7 @@
  * Demonstrates the main capabilities of the library.
  */
 
-import { WebMaxClient } from 'webmaxsocket';
+import { WebMaxClient } from '../src/index';
 
 async function main(): Promise<void> {
   // Initialize the client

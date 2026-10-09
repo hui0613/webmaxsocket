@@ -9,7 +9,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { WebMaxClient } from 'webmaxsocket';
+import { WebMaxClient } from '../src/index';
 
 const sessionName = process.env.SESSION_NAME || 'sms_session';
 const useLastOk =
