@@ -14,8 +14,6 @@ import { resolveIncomingLogMode, printIncomingLog } from './incomingLog';
 import { parseQrTrackId } from './qrWebLogin';
 import * as callHelpers from './callHelpers';
 
-const qrcode = require('qrcode-terminal');
-
 const DEFAULT_OK_API_ENDPOINT = 'https://api.ok.ru/api/vchat/hangupConversation';
 const DEFAULT_OK_API_APPLICATION_KEY = 'CMBGJFMGDIHBABABA';
 
@@ -241,6 +239,7 @@ class WebMaxClient extends EventEmitter {
       [EventTypes.CHAT_ACTION]: [],
       [EventTypes.INCOMING_CALL]: [],
       [EventTypes.CALL_LOG]: [],
+      [EventTypes.QR_CODE]: [],
       [EventTypes.ERROR]: [],
       [EventTypes.DISCONNECT]: []
     };
@@ -296,6 +295,17 @@ class WebMaxClient extends EventEmitter {
    */
   logIncoming(label: string, payload: any): void {
     printIncomingLog(label, payload);
+  }
+
+  /**
+   * Delivers a QR link to the registered onQrCode handlers.
+   * The handler is responsible for rendering the QR code (terminal, UI, file, ...).
+   */
+  private async _deliverQrCode(qrLink: string, small: boolean = true): Promise<void> {
+    const handlers = this.handlers[EventTypes.QR_CODE] || [];
+    for (const handler of handlers) {
+      await handler(qrLink, small);
+    }
   }
 
   _wireIncomingLogListeners(): void {
@@ -358,7 +368,10 @@ class WebMaxClient extends EventEmitter {
   }
 
   /**
-   * Registers a start event handler.
+   * Registers a handler that runs when the client starts.
+   *
+   * @param handler - callback invoked after authorization completes; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
    */
   onStart(handler: any): any {
     if (typeof handler === 'function') {
@@ -373,7 +386,10 @@ class WebMaxClient extends EventEmitter {
   }
 
   /**
-   * Registers a message handler.
+   * Registers a handler for incoming messages.
+   *
+   * @param handler - callback that receives a Message instance; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
    */
   onMessage(handler: any): any {
     if (typeof handler === 'function') {
@@ -387,7 +403,10 @@ class WebMaxClient extends EventEmitter {
   }
 
   /**
-   * Registers a removed-message handler.
+   * Registers a handler for removed messages.
+   *
+   * @param handler - callback that receives the removed Message; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
    */
   onMessageRemoved(handler: any): any {
     if (typeof handler === 'function') {
@@ -401,7 +420,10 @@ class WebMaxClient extends EventEmitter {
   }
 
   /**
-   * Registers a chat-action handler.
+   * Registers a handler for chat actions (typing, sticker selection, etc.).
+   *
+   * @param handler - callback that receives a ChatAction instance; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
    */
   onChatAction(handler: any): any {
     if (typeof handler === 'function') {
@@ -415,7 +437,12 @@ class WebMaxClient extends EventEmitter {
   }
 
   /**
-   * Incoming call (TCP NOTIF_INCOMING_CALL, opcode 137).
+   * Registers a handler for incoming calls.
+   *
+   * Fired on a TCP NOTIF_INCOMING_CALL notification (opcode 137).
+   *
+   * @param handler - callback that receives the call payload; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
    */
   onIncomingCall(handler: any): any {
     if (typeof handler === 'function') {
@@ -429,7 +456,12 @@ class WebMaxClient extends EventEmitter {
   }
 
   /**
-   * Service call record in a chat (NOTIF_MESSAGE with `_type: "CALL"` attachment).
+   * Registers a handler for call records in a chat.
+   *
+   * Fired when a NOTIF_MESSAGE carries a `_type: "CALL"` attachment.
+   *
+   * @param handler - callback that receives the call log event; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
    */
   onCallLog(handler: any): any {
     if (typeof handler === 'function') {
@@ -444,6 +476,9 @@ class WebMaxClient extends EventEmitter {
 
   /**
    * Registers an error handler.
+   *
+   * @param handler - callback that receives the error; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
    */
   onError(handler: any): any {
     if (typeof handler === 'function') {
@@ -452,6 +487,26 @@ class WebMaxClient extends EventEmitter {
     }
     return (fn: any) => {
       this.handlers[EventTypes.ERROR].push(fn);
+      return fn;
+    };
+  }
+
+  /**
+   * Registers a QR code handler.
+   *
+   * The library never prints QR codes itself; the handler is responsible for
+   * rendering the link (terminal, UI, file, ...).
+   *
+   * @param handler - callback `(qrLink, small)`; may return a Promise
+   * @returns the registered handler, or a decorator function when no handler is passed
+   */
+  onQrCode(handler: any): any {
+    if (typeof handler === 'function') {
+      this.handlers[EventTypes.QR_CODE].push(handler);
+      return handler;
+    }
+    return (fn: any) => {
+      this.handlers[EventTypes.QR_CODE].push(fn);
       return fn;
     };
   }
@@ -1087,19 +1142,14 @@ class WebMaxClient extends EventEmitter {
     };
   }
 
-  _printLinkDeviceQRConsole(qrLink: string, small: boolean = true): Promise<void> {
+  async _printLinkDeviceQRConsole(qrLink: string, small: boolean = true): Promise<void> {
     console.log('\n' + '='.repeat(70));
     console.log('📱 LINKING A NEW DEVICE');
     console.log('='.repeat(70));
     console.log('\nOn the phone open Max — as when adding a device in the app:');
     console.log('➡️  Profile -> Devices / Security -> Connect device (QR login)');
     console.log('📸 Point the camera at the QR below — this is the same flow as the web client:\n');
-    return new Promise((resolve) => {
-      qrcode.generate(qrLink, { small }, (qrCode: string) => {
-        console.log(qrCode);
-        resolve();
-      });
-    });
+    await this._deliverQrCode(qrLink, small);
   }
 
   /**
@@ -1173,15 +1223,10 @@ class WebMaxClient extends EventEmitter {
       console.log('🔐 QR CODE AUTHORIZATION');
       console.log('='.repeat(70));
       console.log('\n📱 On the phone: Profile -> Devices / Security -> Connect device');
-      console.log('📸 Scan the QR code below:\n');
+      console.log('📸 Scan the QR code:\n');
 
-      // Display the QR code in the console (wait for output, then poll the status)
-      await new Promise<void>((resolve) => {
-        qrcode.generate(qrData.qrLink, { small: true }, (qrCode: string) => {
-          console.log(qrCode);
-          resolve();
-        });
-      });
+      // Deliver the QR code to the caller via the onQrCode callback (e.g. print it in the terminal)
+      await this._deliverQrCode(qrData.qrLink, true);
 
       console.log('\n💡 Or open the link: ' + qrData.qrLink);
       console.log('='.repeat(70) + '\n');

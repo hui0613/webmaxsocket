@@ -160,6 +160,7 @@ Paired registrators: **`onIncomingCall(handler)`**, **`onCallLog(handler)`** (sa
 | `onIncomingCall(handler)` | Incoming call (opcode 137) |
 | `onCallLog(handler)` | Call record in a chat (`CALL` in message attachments) |
 | `onError(handler)` | Errors |
+| `onQrCode(handler)` | QR link for rendering `(qrLink, small)` |
 
 ### State after `sync()`
 

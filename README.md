@@ -182,17 +182,33 @@ main().catch(console.error);
 
 #### Method 1: QR code (recommended for the first run)
 
-On the first run you will see a QR code in the console:
+On the first run the client requests a QR code. The QR **link** is delivered to the **`onQrCode(qrLink, small)`** handler — the library itself does **not** print QR codes. To render it in the terminal, use any QR renderer (for example `qrcode-terminal`):
+
+```javascript
+const { WebMaxClient } = require('webmaxsocket');
+const qrcode = require('qrcode-terminal');
+
+const client = new WebMaxClient({
+  name: 'my_session'
+});
+
+client.onQrCode((qrLink, small) => {
+  return new Promise((resolve) => {
+    qrcode.generate(qrLink, { small }, () => resolve());
+  });
+});
+
+await client.start();
+```
+
+Without the callback only the raw link is printed:
 
 ```
 🔐 QR CODE AUTHORIZATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📱 On the phone: Profile → Devices / Security → Connect device
-📸 Scan the QR code
-
-█████████████████████████████
-...
+💡 Or open the link: https://...
 ```
 
 After scanning:
@@ -679,6 +695,18 @@ Registers an error handler.
 ```javascript
 client.onError(async (error) => {
   console.error('Error:', error.message);
+});
+```
+
+##### `onQrCode(handler)`
+
+Registers a QR code handler `(qrLink, small)`. The library never prints QR codes itself.
+
+```javascript
+client.onQrCode((qrLink, small) => {
+  return new Promise((resolve) => {
+    qrcode.generate(qrLink, { small }, () => resolve());
+  });
 });
 ```
 

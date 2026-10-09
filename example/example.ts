@@ -5,11 +5,20 @@
 
 import { WebMaxClient } from '../src/index';
 
+const qrcode = require('qrcode-terminal');
+
 async function main(): Promise<void> {
   // Initialize the client
   const client = new WebMaxClient({
     name: 'example_session', // Session name
     appVersion: '26.19.2'
+  });
+
+  // QR handler — the library does not print QR codes itself; render the link here.
+  client.onQrCode((qrLink: string, small: boolean) => {
+    return new Promise<void>((resolve) => {
+      qrcode.generate(qrLink, { small }, () => resolve());
+    });
   });
 
   // Start handler

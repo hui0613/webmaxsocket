@@ -25,6 +25,7 @@ export const EventTypes = {
   CHAT_ACTION: 'chat_action',
   INCOMING_CALL: 'incoming_call',
   CALL_LOG: 'call_log',
+  QR_CODE: 'qr_code',
   ERROR: 'error',
   DISCONNECT: 'disconnect'
 };
