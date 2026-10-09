@@ -4,26 +4,42 @@
  */
 
 import { WebMaxClient, FileSessionStorage } from '../src/index';
-import * as path from 'path'
+import * as path from 'path';
 
-const qrcode = require('qrcode-terminal');
+import QRCode from 'qrcode';
 
 async function main(): Promise<void> {
+  const sessionStorage = new FileSessionStorage({
+    name: 'default',
+    directory: path.resolve(process.cwd(), 'sessions')
+  });
+
+  // Reuse a saved token when available; otherwise authorize via QR code.
+  const saved = sessionStorage.load();
+  const token = process.env.TOKEN || (saved && saved.token ? String(saved.token) : undefined);
+
+  if (token) {
+    console.log('🔑 Saved token found — signing in by token');
+  } else {
+    console.log('📱 No saved token — QR authorization will be used');
+  }
+
   // Initialize the client
   const client = new WebMaxClient({
     name: 'example_session', // Session name
     appVersion: '26.19.2',
-    sessionStorage: new FileSessionStorage({
-      name: "default",
-      directory: path.resolve(process.cwd(), 'sessions_test')
-    })
+    deviceType: 'WEB', // Keep authorization on WEB (token or QR) — no SMS phone needed
+    token,
+    sessionStorage
   });
 
   // QR handler — the library does not print QR codes itself; render the link here.
-  client.onQrCode((qrLink: string, small: boolean) => {
-    return new Promise<void>((resolve) => {
-      qrcode.generate(qrLink, { small }, () => resolve());
-    });
+  client.onQrCode(async (qrLink: string, small: boolean) => {
+    console.info('qrcode link', qrLink);
+    // The terminal renderer prints two rows per line using half-block
+    // characters, so the QR keeps a square aspect ratio in terminals.
+    const qr = await QRCode.toString(qrLink, { type: 'terminal', small: true });
+    console.log(qr);
   });
 
   // Start handler
@@ -38,6 +54,7 @@ async function main(): Promise<void> {
   // Incoming message handler
   client.onMessage(async (message: any) => {
     const senderName = message.getSenderName();
+    console.info(message)
     console.log(`\n💬 Message from ${senderName}:`);
     console.log(`📝 ${message.text}`);
     console.log(`🕐 ${new Date(message.timestamp).toLocaleString()}`);
